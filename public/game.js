@@ -85,6 +85,29 @@ function leaveRoom() {
 // 兼容旧的 joinGame
 function joinGame() { goToLobby(); }
 
+// ========== 移动端标签切换 ==========
+function switchTab(tab) {
+  const tabs = document.querySelectorAll('.mobile-tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+
+  const mapEl = document.getElementById('map-container');
+  const cmdEl = document.getElementById('side-panel');
+  const logEl = document.getElementById('mobile-log-panel');
+
+  // 在移动端通过 display 控制可见性
+  if (window.innerWidth <= 768) {
+    mapEl.style.display = tab === 'map' ? 'block' : 'none';
+    cmdEl.style.display = tab === 'cmd' ? 'flex' : 'none';
+    logEl.style.display = tab === 'log' ? 'block' : 'none';
+  }
+
+  if (tab === 'map') {
+    resizeCanvas();
+    drawMap();
+  }
+}
+
 function handleMessage(msg) {
   switch (msg.type) {
     case 'roomList':
@@ -255,12 +278,24 @@ function updateUI() {
 }
 
 function addLog(text) {
+  // Desktop log
   const log = document.getElementById('battle-log');
-  const div = document.createElement('div');
-  div.className = 'log-entry';
-  div.textContent = text;
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
+  if (log) {
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.textContent = text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+  }
+  // Mobile log
+  const mlog = document.getElementById('battle-log-mobile');
+  if (mlog) {
+    const div2 = document.createElement('div');
+    div2.className = 'log-entry';
+    div2.textContent = text;
+    mlog.appendChild(div2);
+    mlog.scrollTop = mlog.scrollHeight;
+  }
 }
 
 // ========== Canvas 地图绘制 ==========
@@ -271,12 +306,35 @@ function initCanvas() {
   canvas = document.getElementById('gameMap');
   ctx = canvas.getContext('2d');
   resizeCanvas();
-  window.addEventListener('resize', () => { resizeCanvas(); drawMap(); });
+  window.addEventListener('resize', () => {
+    handleResponsiveLayout();
+    resizeCanvas();
+    drawMap();
+  });
   canvas.addEventListener('mousemove', onMapMouseMove);
   canvas.addEventListener('click', onMapClick);
   // 移动端触摸支持
   canvas.addEventListener('touchstart', onMapTouch, { passive: false });
   canvas.addEventListener('touchmove', onMapTouchMove, { passive: false });
+}
+
+function handleResponsiveLayout() {
+  const mapEl = document.getElementById('map-container');
+  const cmdEl = document.getElementById('side-panel');
+  const logEl = document.getElementById('mobile-log-panel');
+  if (window.innerWidth > 768) {
+    // Desktop: show map and side panel, hide mobile log
+    mapEl.style.display = '';
+    cmdEl.style.display = '';
+    logEl.style.display = 'none';
+  } else {
+    // Mobile: check which tab is active
+    const activeTab = document.querySelector('.mobile-tab.active');
+    const tab = activeTab ? activeTab.textContent.includes('地图') ? 'map' : activeTab.textContent.includes('指挥') ? 'cmd' : 'log' : 'map';
+    mapEl.style.display = tab === 'map' ? 'block' : 'none';
+    cmdEl.style.display = tab === 'cmd' ? 'flex' : 'none';
+    logEl.style.display = tab === 'log' ? 'block' : 'none';
+  }
 }
 
 function resizeCanvas() {
