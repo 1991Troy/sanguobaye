@@ -85,34 +85,6 @@ function leaveRoom() {
 // 兼容旧的 joinGame
 function joinGame() { goToLobby(); }
 
-// ========== 移动端标签切换 ==========
-function switchTab(tab) {
-  const tabs = document.querySelectorAll('.mobile-tab');
-  tabs.forEach(t => t.classList.remove('active'));
-  // 找到对应按钮
-  tabs.forEach(t => {
-    if ((tab === 'map' && t.textContent.includes('地图')) ||
-        (tab === 'cmd' && t.textContent.includes('指挥')) ||
-        (tab === 'log' && t.textContent.includes('战报'))) {
-      t.classList.add('active');
-    }
-  });
-
-  const mapEl = document.getElementById('map-container');
-  const cmdEl = document.getElementById('side-panel');
-  const logEl = document.getElementById('mobile-log-panel');
-
-  if (window.innerWidth <= 768 || (window.innerHeight <= 500 && window.innerWidth > window.innerHeight)) {
-    mapEl.style.display = tab === 'map' ? 'block' : 'none';
-    cmdEl.style.display = tab === 'cmd' ? 'flex' : 'none';
-    logEl.style.display = tab === 'log' ? 'block' : 'none';
-  }
-
-  if (tab === 'map') {
-    setTimeout(() => { resizeCanvas(); drawMap(); }, 50);
-  }
-}
-
 function handleMessage(msg) {
   switch (msg.type) {
     case 'roomList':
@@ -123,7 +95,7 @@ function handleMessage(msg) {
       currentRoomId = msg.roomId;
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('lobby-screen').style.display = 'none';
-      document.getElementById('game-screen').style.display = 'block';
+      document.getElementById('game-screen').style.display = 'flex';
       document.getElementById('roomCode').textContent = msg.roomId;
       initCanvas();
       addLog('✅ 已加入房间 ' + msg.roomId);
@@ -283,24 +255,36 @@ function updateUI() {
 }
 
 function addLog(text) {
-  // Desktop log
-  const log = document.getElementById('battle-log');
-  if (log) {
-    const div = document.createElement('div');
-    div.className = 'log-entry';
-    div.textContent = text;
-    log.appendChild(div);
-    log.scrollTop = log.scrollHeight;
-  }
-  // Mobile log
-  const mlog = document.getElementById('battle-log-mobile');
-  if (mlog) {
-    const div2 = document.createElement('div');
-    div2.className = 'log-entry';
-    div2.textContent = text;
-    mlog.appendChild(div2);
-    mlog.scrollTop = mlog.scrollHeight;
-  }
+  // 弹幕效果：在地图上飘过
+  const layer = document.getElementById('danmaku-layer');
+  if (!layer) return;
+  const el = document.createElement('div');
+  el.className = 'danmaku';
+  el.textContent = text;
+
+  // 随机垂直位置，避免重叠
+  const top = 8 + Math.random() * 70; // 8% ~ 78%
+  el.style.top = top + '%';
+  el.style.right = '-100%'; // 从右侧外开始
+  el.style.left = '100%';
+
+  // 根据文字长度调整速度
+  const duration = 6 + Math.random() * 3; // 6~9秒
+  el.style.animationDuration = duration + 's';
+
+  // 颜色：根据内容类型
+  if (text.includes('✅') || text.includes('胜利')) el.style.color = '#2ecc71';
+  else if (text.includes('❌') || text.includes('战败') || text.includes('战死')) el.style.color = '#e74c3c';
+  else if (text.includes('🎴') || text.includes('金卡')) el.style.color = '#ffd700';
+  else if (text.includes('⚔️') || text.includes('出征')) el.style.color = '#f39c12';
+  else if (text.includes('ℹ️')) el.style.color = '#8888cc';
+
+  layer.appendChild(el);
+
+  // 动画结束后移除
+  el.addEventListener('animationend', () => el.remove());
+  // 安全兜底
+  setTimeout(() => { if (el.parentNode) el.remove(); }, (duration + 1) * 1000);
 }
 
 // ========== Canvas 地图绘制 ==========
@@ -316,7 +300,6 @@ function initCanvas() {
   ctx = canvas.getContext('2d');
   resizeCanvas();
   window.addEventListener('resize', () => {
-    handleResponsiveLayout();
     resizeCanvas();
     drawMap();
   });
@@ -332,31 +315,8 @@ function initCanvas() {
   // 移动端默认缩放到 1.4 让城池更清晰
   if (window.innerWidth <= 768) {
     camZoom = 1.4;
-    // 居中偏移
     camX = -(mapW * camZoom - mapW) / 2;
     camY = -(mapH * camZoom - mapH) / 2;
-  }
-}
-
-function handleResponsiveLayout() {
-  const mapEl = document.getElementById('map-container');
-  const cmdEl = document.getElementById('side-panel');
-  const logEl = document.getElementById('mobile-log-panel');
-  const isMobile = window.innerWidth <= 768;
-  const isLandscape = window.innerHeight <= 500 && window.innerWidth > window.innerHeight;
-
-  if (!isMobile && !isLandscape) {
-    // Desktop: show map and side panel, hide mobile log
-    mapEl.style.display = '';
-    cmdEl.style.display = '';
-    logEl.style.display = 'none';
-  } else {
-    // Mobile or landscape: check which tab is active
-    const activeTab = document.querySelector('.mobile-tab.active');
-    const tab = activeTab ? activeTab.textContent.includes('地图') ? 'map' : activeTab.textContent.includes('指挥') ? 'cmd' : 'log' : 'map';
-    mapEl.style.display = tab === 'map' ? 'block' : 'none';
-    cmdEl.style.display = tab === 'cmd' ? 'flex' : 'none';
-    logEl.style.display = tab === 'log' ? 'block' : 'none';
   }
 }
 

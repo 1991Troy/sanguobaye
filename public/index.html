@@ -42,26 +42,19 @@
       <div id="players-list"></div>
     </div>
 
-    <!-- 移动端标签切换栏 + 主区域容器 -->
-    <div id="game-body">
-      <div id="mobile-tabs">
-        <button class="mobile-tab active" onclick="switchTab('map')" aria-label="地图">🗺️ 地图</button>
-        <button class="mobile-tab" onclick="switchTab('cmd')" aria-label="指挥">⚔️ 指挥</button>
-        <button class="mobile-tab" onclick="switchTab('log')" aria-label="战报">📜 战报</button>
-      </div>
-
-      <div id="main-area">
-      <div id="map-container" data-tab="map">
+    <div id="main-area">
+      <div id="map-container">
         <canvas id="gameMap"></canvas>
         <div id="city-tooltip"></div>
+        <div id="danmaku-layer"></div>
         <div id="map-zoom-controls">
           <button onclick="zoomIn()" aria-label="放大">＋</button>
           <button onclick="resetCamera()" aria-label="重置">⟲</button>
           <button onclick="zoomOut()" aria-label="缩小">－</button>
         </div>
       </div>
-      <div id="side-panel" data-tab="cmd">
-        <h3 class="desktop-only">⚔️ 指挥部</h3>
+      <div id="side-panel">
+        <h3>⚔️ 指挥部</h3>
         <div id="action-panel">
           <div id="waiting-info">
             <p>房间号: <span id="roomCode" style="font-size:24px;font-weight:bold;color:#f39c12;letter-spacing:4px"></span></p>
@@ -77,24 +70,24 @@
           </div>
           <div id="playing-actions" style="display:none">
             <div class="section">
-              <label>选择出发城池</label>
+              <label>出发城池</label>
               <select id="selFrom" aria-label="出发城池"></select>
             </div>
             <div class="section">
-              <label>选择目标城池</label>
+              <label>目标城池</label>
               <select id="selTo" aria-label="目标城池"></select>
             </div>
             <div class="section">
-              <label>派遣武将</label>
+              <label>武将</label>
               <select id="selGeneral" aria-label="武将选择"></select>
             </div>
             <div class="section">
-              <label>出兵数量</label>
+              <label>出兵</label>
               <input type="number" id="troopCount" value="3000" min="500" step="500" aria-label="出兵数量">
             </div>
             <div class="section btn-row">
               <button class="btn btn-attack" onclick="doAttack()" aria-label="出征">⚔️ 出征</button>
-              <button class="btn btn-recruit" onclick="doRecruit()" aria-label="征兵">🏰 征兵 1000</button>
+              <button class="btn btn-recruit" onclick="doRecruit()" aria-label="征兵">🏰 征兵</button>
             </div>
             <div class="section">
               <button class="btn btn-draw" onclick="doDraw()" id="btnDraw" aria-label="五连抽卡">🎴 五连抽卡</button>
@@ -108,19 +101,12 @@
             </div>
             <div class="section btn-row">
               <button class="btn btn-save" onclick="saveGame()" aria-label="存档">💾 存档</button>
-              <button class="btn btn-save" onclick="openSaveModal()" aria-label="存档管理">📂 存档管理</button>
+              <button class="btn btn-save" onclick="openSaveModal()" aria-label="存档管理">📂 管理</button>
             </div>
           </div>
         </div>
-        <h3 class="desktop-only">📜 战报</h3>
-        <div id="battle-log" class="desktop-only"></div>
-      </div>
-      <!-- 移动端战报面板 -->
-      <div id="mobile-log-panel" data-tab="log" style="display:none">
-        <div id="battle-log-mobile"></div>
       </div>
     </div>
-    </div><!-- /game-body -->
   </div>
 
   <script src="game.js"></script>
