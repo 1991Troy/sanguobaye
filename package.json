@@ -1,0 +1,12 @@
+{
+  "name": "sanguo-hegemony",
+  "version": "1.0.0",
+  "description": "三国霸业 - 多人联机网页策略游戏",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}

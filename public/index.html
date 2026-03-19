@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>三国霸业 - 多人联机策略游戏</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="login-screen">
+    <h1>🏯 三国霸业</h1>
+    <p>多人联机回合制策略游戏</p>
+    <input type="text" id="playerName" placeholder="输入你的名号" maxlength="8" aria-label="玩家名称">
+    <br>
+    <button onclick="goToLobby()" aria-label="进入大厅">进入天下</button>
+  </div>
+
+  <div id="lobby-screen" style="display:none">
+    <h1>🏯 房间大厅</h1>
+    <p id="lobby-player-name"></p>
+    <div style="display:flex;gap:12px;justify-content:center;margin:16px 0;flex-wrap:wrap">
+      <button class="btn btn-start" onclick="createNewRoom()" aria-label="创建房间">🏠 创建房间</button>
+      <button class="btn btn-recruit" onclick="quickJoin()" aria-label="快速加入">⚡ 快速加入</button>
+      <button class="btn btn-save" onclick="refreshRooms()" aria-label="刷新列表">🔄 刷新</button>
+    </div>
+    <div id="room-list" class="room-list"></div>
+    <div style="margin-top:16px">
+      <input type="text" id="roomCodeInput" placeholder="输入房间号加入" maxlength="4" style="text-transform:uppercase;width:120px;text-align:center" aria-label="房间号">
+      <button class="btn btn-attack" onclick="joinByCode()" aria-label="加入房间">加入</button>
+    </div>
+  </div>
+
+  <div id="game-screen">
+    <div id="top-bar">
+      <div class="info">
+        <span id="roundInfo">第 1 回合</span>
+        <span id="turnInfo" class="turn-indicator"></span>
+        <span id="turnCountdown" class="countdown"></span>
+        <span id="goldInfo">💰 0</span>
+        <span id="gameCountdown" class="countdown-game"></span>
+      </div>
+      <div id="players-list"></div>
+    </div>
+    <div id="main-area">
+      <div id="map-container">
+        <canvas id="gameMap"></canvas>
+        <div id="city-tooltip"></div>
+      </div>
+      <div id="side-panel">
+        <h3>⚔️ 指挥部</h3>
+        <div id="action-panel">
+          <div id="waiting-info">
+            <p>房间号: <span id="roomCode" style="font-size:24px;font-weight:bold;color:#f39c12;letter-spacing:4px"></span></p>
+            <p>等待玩家加入...</p>
+            <p class="count" id="playerCount">1</p>
+            <p>/ 4 名玩家</p>
+            <br>
+            <button class="btn btn-start" onclick="startGame()" aria-label="开始游戏">开始游戏 (至少2人)</button>
+            <br><br>
+            <button class="btn btn-save" onclick="openSaveModal()" aria-label="加载存档" style="width:100%">📂 加载存档</button>
+            <br><br>
+            <button class="btn btn-end" onclick="leaveRoom()" aria-label="离开房间" style="width:100%">🚪 离开房间</button>
+          </div>
+          <div id="playing-actions" style="display:none">
+            <div class="section">
+              <label>选择出发城池</label>
+              <select id="selFrom" aria-label="出发城池"></select>
+            </div>
+            <div class="section">
+              <label>选择目标城池</label>
+              <select id="selTo" aria-label="目标城池"></select>
+            </div>
+            <div class="section">
+              <label>派遣武将</label>
+              <select id="selGeneral" aria-label="武将选择"></select>
+            </div>
+            <div class="section">
+              <label>出兵数量</label>
+              <input type="number" id="troopCount" value="3000" min="500" step="500" aria-label="出兵数量">
+            </div>
+            <div class="section">
+              <button class="btn btn-attack" onclick="doAttack()" aria-label="出征">⚔️ 出征</button>
+              <button class="btn btn-recruit" onclick="doRecruit()" aria-label="征兵">🏰 征兵 1000</button>
+            </div>
+            <div class="section">
+              <button class="btn btn-draw" onclick="doDraw()" id="btnDraw" aria-label="五连抽卡">🎴 五连抽卡</button>
+            </div>
+            <div class="section" id="skillCardSection" style="display:none">
+              <label>技能卡</label>
+              <div id="skillCardList"></div>
+            </div>
+            <div class="section">
+              <button class="btn btn-end" onclick="endTurn()" aria-label="结束回合">结束回合 ⏭️</button>
+            </div>
+            <div class="section" style="display:flex;gap:6px">
+              <button class="btn btn-save" onclick="saveGame()" aria-label="存档">💾 存档</button>
+              <button class="btn btn-save" onclick="openSaveModal()" aria-label="存档管理">📂 存档管理</button>
+            </div>
+          </div>
+        </div>
+        <h3>📜 战报</h3>
+        <div id="battle-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+
+  <!-- 存档管理弹窗 -->
+  <div id="save-modal" style="display:none">
+    <div class="save-modal-content">
+      <div class="save-modal-header">
+        <h3>📂 存档管理</h3>
+        <button onclick="closeSaveModal()" class="btn-close" aria-label="关闭">✕</button>
+      </div>
+      <div id="save-list"></div>
+    </div>
+  </div>
+
+  <!-- 抽卡结果弹窗 -->
+  <div id="draw-modal" style="display:none">
+    <div class="draw-modal-content">
+      <div class="draw-header">🎴 五连抽卡</div>
+      <div id="draw-cards" class="draw-cards"></div>
+      <button onclick="closeDrawModal()" class="btn btn-start" style="margin-top:16px" aria-label="确认">确认</button>
+    </div>
+  </div>
+
+  <!-- 技能卡使用弹窗 -->
+  <div id="skill-modal" style="display:none">
+    <div class="save-modal-content">
+      <div class="save-modal-header">
+        <h3 id="skill-modal-title">使用技能卡</h3>
+        <button onclick="closeSkillModal()" class="btn-close" aria-label="关闭">✕</button>
+      </div>
+      <div id="skill-modal-body" style="padding:16px"></div>
+    </div>
+  </div>
+
+  <!-- 得分结算弹窗 -->
+  <div id="score-modal" style="display:none">
+    <div class="score-modal-content">
+      <div id="score-body"></div>
+      <button onclick="closeScoreModal()" class="btn btn-start" style="margin-top:16px;width:100%" aria-label="确认">确认</button>
+    </div>
+  </div>
+</body>
+</html>
