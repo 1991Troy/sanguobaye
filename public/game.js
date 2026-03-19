@@ -302,6 +302,10 @@ function addLog(text) {
 let canvas, ctx;
 let mapW, mapH;
 
+// ========== 地图相机（缩放+平移） ==========
+let camX = 0, camY = 0, camZoom = 1;
+const CAM_MIN_ZOOM = 0.5, CAM_MAX_ZOOM = 3;
+
 function initCanvas() {
   canvas = document.getElementById('gameMap');
   ctx = canvas.getContext('2d');
@@ -311,11 +315,22 @@ function initCanvas() {
     resizeCanvas();
     drawMap();
   });
+  // 桌面端
   canvas.addEventListener('mousemove', onMapMouseMove);
   canvas.addEventListener('click', onMapClick);
-  // 移动端触摸支持
-  canvas.addEventListener('touchstart', onMapTouch, { passive: false });
-  canvas.addEventListener('touchmove', onMapTouchMove, { passive: false });
+  canvas.addEventListener('wheel', onMapWheel, { passive: false });
+  // 移动端
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+  canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+  canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+
+  // 移动端默认缩放到 1.4 让城池更清晰
+  if (window.innerWidth <= 768) {
+    camZoom = 1.4;
+    // 居中偏移
+    camX = -(mapW * camZoom - mapW) / 2;
+    camY = -(mapH * camZoom - mapH) / 2;
+  }
 }
 
 function handleResponsiveLayout() {
@@ -351,43 +366,61 @@ function resizeCanvas() {
   mapH = h;
 }
 
+// 城池在画布上的实际像素位置（含相机变换）
 function cityPos(city) {
-  return { x: city.x / 100 * mapW, y: city.y / 100 * mapH };
+  return {
+    x: city.x / 100 * mapW * camZoom + camX,
+    y: city.y / 100 * mapH * camZoom + camY
+  };
+}
+
+// 屏幕坐标 → 地图逻辑坐标（百分比）
+function screenToMap(sx, sy) {
+  return {
+    mx: (sx - camX) / (mapW * camZoom) * 100,
+    my: (sy - camY) / (mapH * camZoom) * 100
+  };
 }
 
 function drawMap() {
   if (!gameState || !ctx) return;
   const s = gameState;
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, mapW, mapH);
+
+  // 应用相机变换
+  ctx.save();
+  ctx.translate(camX, camY);
+  ctx.scale(camZoom, camZoom);
 
   drawBackground();
 
   // 绘制路线 - 带渐变的连线
   s.routes.forEach(([a, b]) => {
-    const pa = cityPos(s.cities[a]);
-    const pb = cityPos(s.cities[b]);
-    const ownerA = s.cities[a].owner;
-    const ownerB = s.cities[b].owner;
+    const ca = s.cities[a], cb = s.cities[b];
+    const pax = ca.x / 100 * mapW, pay = ca.y / 100 * mapH;
+    const pbx = cb.x / 100 * mapW, pby = cb.y / 100 * mapH;
+    const ownerA = ca.owner, ownerB = cb.owner;
     const colorA = s.players[ownerA]?.color || '#333';
     const colorB = s.players[ownerB]?.color || '#333';
     const sameOwner = ownerA === ownerB && ownerA !== 'neutral';
 
     ctx.beginPath();
-    ctx.moveTo(pa.x, pa.y);
-    ctx.lineTo(pb.x, pb.y);
+    ctx.moveTo(pax, pay);
+    ctx.lineTo(pbx, pby);
     if (sameOwner) {
-      const grad = ctx.createLinearGradient(pa.x, pa.y, pb.x, pb.y);
+      const grad = ctx.createLinearGradient(pax, pay, pbx, pby);
       grad.addColorStop(0, colorA + '55');
       grad.addColorStop(1, colorB + '55');
       ctx.strokeStyle = grad;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 / camZoom;
     } else {
       ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 / camZoom;
     }
     ctx.stroke();
 
-    // 虚线效果 for neutral routes
     if (!sameOwner) {
       ctx.setLineDash([4, 6]);
       ctx.strokeStyle = 'rgba(255,255,255,0.05)';
@@ -398,25 +431,27 @@ function drawMap() {
 
   // 绘制城池
   const time = Date.now() * 0.001;
+  const scaledR = 1 / camZoom; // 用于保持某些元素视觉大小不变
   s.cities.forEach((city, i) => {
-    const pos = cityPos(city);
+    const px = city.x / 100 * mapW;
+    const py = city.y / 100 * mapH;
     const owner = city.owner;
     const player = s.players[owner];
     const color = player ? player.color : '#555';
     const isMyCity = owner === s.you;
     const isHovered = hoveredCity === i;
     const baseR = isMyCity ? 17 : 13;
-    const radius = isHovered ? baseR + 3 : baseR;
+    const radius = (isHovered ? baseR + 3 : baseR) / camZoom;
 
     // 外层脉冲光晕（己方城池）
     if (isMyCity) {
       const pulse = 0.6 + 0.4 * Math.sin(time * 2 + i);
-      const glowR = radius + 12 + pulse * 4;
-      const glow = ctx.createRadialGradient(pos.x, pos.y, radius, pos.x, pos.y, glowR);
+      const glowR = radius + (12 + pulse * 4) / camZoom;
+      const glow = ctx.createRadialGradient(px, py, radius, px, py, glowR);
       glow.addColorStop(0, color + '30');
       glow.addColorStop(1, color + '00');
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, glowR, 0, Math.PI * 2);
+      ctx.arc(px, py, glowR, 0, Math.PI * 2);
       ctx.fillStyle = glow;
       ctx.fill();
     }
@@ -424,16 +459,16 @@ function drawMap() {
     // 防御buff光环
     if (city.defBuff && city.defBuff > 0) {
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, radius + 6, 0, Math.PI * 2);
-      ctx.strokeStyle = '#2ecc71' + '88';
-      ctx.lineWidth = 2;
+      ctx.arc(px, py, radius + 6 / camZoom, 0, Math.PI * 2);
+      ctx.strokeStyle = '#2ecc7188';
+      ctx.lineWidth = 2 / camZoom;
       ctx.setLineDash([3, 3]);
       ctx.stroke();
       ctx.setLineDash([]);
     }
 
-    // 城池主体 - 渐变填充
-    const grad = ctx.createRadialGradient(pos.x - 3, pos.y - 3, 2, pos.x, pos.y, radius);
+    // 城池主体
+    const grad = ctx.createRadialGradient(px - 3 / camZoom, py - 3 / camZoom, 2 / camZoom, px, py, radius);
     if (owner === 'neutral') {
       grad.addColorStop(0, '#666');
       grad.addColorStop(1, '#333');
@@ -442,54 +477,51 @@ function drawMap() {
       grad.addColorStop(1, color + '88');
     }
     ctx.beginPath();
-    ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // 边框
     ctx.strokeStyle = isHovered ? '#fff' : (owner === 'neutral' ? '#555' : color);
-    ctx.lineWidth = isHovered ? 2.5 : 1.5;
+    ctx.lineWidth = (isHovered ? 2.5 : 1.5) / camZoom;
     ctx.stroke();
 
     // 内部高光
-    const hl = ctx.createRadialGradient(pos.x - radius * 0.3, pos.y - radius * 0.3, 1, pos.x, pos.y, radius);
+    const hl = ctx.createRadialGradient(px - radius * 0.3, py - radius * 0.3, 1 / camZoom, px, py, radius);
     hl.addColorStop(0, 'rgba(255,255,255,0.2)');
     hl.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.beginPath();
-    ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
     ctx.fillStyle = hl;
     ctx.fill();
 
-    // 城名 - 带阴影
+    // 城名
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.8)';
     ctx.shadowBlur = 4;
     ctx.fillStyle = '#fff';
-    const isMobile = mapW < 500;
-    const nameFontSize = isMobile ? (isMyCity ? 10 : 9) : (isMyCity ? 12 : 11);
-    ctx.font = `${isMyCity ? 'bold ' : ''}${nameFontSize}px "Noto Serif SC", "Microsoft YaHei"`;
+    const fontSize = (isMyCity ? 12 : 11) / camZoom;
+    ctx.font = `${isMyCity ? 'bold ' : ''}${fontSize}px "Noto Serif SC", "Microsoft YaHei"`;
     ctx.textAlign = 'center';
-    ctx.fillText(city.name, pos.x, pos.y - radius - 7);
+    ctx.fillText(city.name, px, py - radius - 7 / camZoom);
     ctx.restore();
 
     // 兵力
     ctx.fillStyle = owner === 'neutral' ? '#888' : '#ccc';
-    const troopFontSize = isMobile ? 8 : 10;
-    ctx.font = `${troopFontSize}px "Noto Serif SC", "Microsoft YaHei"`;
+    ctx.font = `${10 / camZoom}px "Noto Serif SC", "Microsoft YaHei"`;
     ctx.textAlign = 'center';
-    ctx.fillText(city.troops + '兵', pos.x, pos.y + 4);
+    ctx.fillText(city.troops + '兵', px, py + 4 / camZoom);
 
-    // 武将指示点（己方城池有武将驻守时）
+    // 武将指示点
     if (isMyCity) {
       const me = s.players[s.you];
       const generals = me?.generals?.filter(g => g.cityId === i) || [];
       if (generals.length > 0) {
         generals.forEach((g, gi) => {
-          const dotX = pos.x + radius + 4 + gi * 8;
-          const dotY = pos.y - 4;
+          const dotX = px + radius + (4 + gi * 8) / camZoom;
+          const dotY = py - 4 / camZoom;
           const dotColor = g.rarity === 'gold' ? '#ffd700' : g.rarity === 'purple' ? '#a855f7' : g.rarity === 'blue' ? '#3b82f6' : '#aaa';
           ctx.beginPath();
-          ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+          ctx.arc(dotX, dotY, 3 / camZoom, 0, Math.PI * 2);
           ctx.fillStyle = dotColor;
           ctx.fill();
         });
@@ -497,7 +529,9 @@ function drawMap() {
     }
   });
 
-  // 动画帧 - 使用标记避免重复调度
+  ctx.restore(); // 恢复相机变换
+
+  // 动画帧
   if (!drawMap._rafScheduled) {
     drawMap._rafScheduled = true;
     requestAnimationFrame(() => {
@@ -656,13 +690,13 @@ function onMapMouseMove(e) {
     for (let i = 0; i < gameState.cities.length; i++) {
       const pos = cityPos(gameState.cities[i]);
       const dist = Math.hypot(mx - pos.x, my - pos.y);
-      if (dist < 20) {
+      if (dist < 20 * camZoom) {
         hoveredCity = i;
         const city = gameState.cities[i];
         const owner = city.owner === 'neutral' ? '中立' : (gameState.players[city.owner]?.name || '?');
         tooltip.style.display = 'block';
-        tooltip.style.left = (e.clientX - canvas.getBoundingClientRect().left + 15) + 'px';
-        tooltip.style.top = (e.clientY - canvas.getBoundingClientRect().top - 10) + 'px';
+        tooltip.style.left = (mx + 15) + 'px';
+        tooltip.style.top = (my - 10) + 'px';
         tooltip.innerHTML = `<strong>${city.name}</strong><br>兵力: ${city.troops}<br>所属: ${owner}${city.defBuff ? '<br>🏰 防御+' + Math.round(city.defBuff*100) + '%' : ''}`;
         break;
       }
@@ -685,48 +719,168 @@ function onMapClick(e) {
   }
 }
 
-// ========== 移动端触摸支持 ==========
-let touchedCity = null;
-
-function getTouchedCity(touch) {
-  if (!gameState) return null;
+// 桌面端滚轮缩放
+function onMapWheel(e) {
+  e.preventDefault();
   const rect = canvas.getBoundingClientRect();
-  const mx = touch.clientX - rect.left;
-  const my = touch.clientY - rect.top;
-  // 移动端用更大的触摸半径
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  const oldZoom = camZoom;
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  camZoom = Math.max(CAM_MIN_ZOOM, Math.min(CAM_MAX_ZOOM, camZoom * delta));
+
+  // 以鼠标位置为中心缩放
+  camX = mx - (mx - camX) * (camZoom / oldZoom);
+  camY = my - (my - camY) * (camZoom / oldZoom);
+
+  clampCamera();
+  drawMap();
+}
+
+// ========== 移动端触摸：拖拽 + 双指缩放 + 点击选城 ==========
+let _touches = [];
+let _lastPinchDist = 0;
+let _isPanning = false;
+let _panStartX = 0, _panStartY = 0;
+let _camStartX = 0, _camStartY = 0;
+let _tapStart = 0;
+let _tapX = 0, _tapY = 0;
+let _moved = false;
+
+function onTouchStart(e) {
+  e.preventDefault();
+  _touches = Array.from(e.touches);
+  _moved = false;
+  _tapStart = Date.now();
+
+  if (_touches.length === 1) {
+    _isPanning = true;
+    _panStartX = _touches[0].clientX;
+    _panStartY = _touches[0].clientY;
+    _tapX = _panStartX;
+    _tapY = _panStartY;
+    _camStartX = camX;
+    _camStartY = camY;
+  } else if (_touches.length === 2) {
+    _isPanning = false;
+    _lastPinchDist = Math.hypot(
+      _touches[0].clientX - _touches[1].clientX,
+      _touches[0].clientY - _touches[1].clientY
+    );
+  }
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  const touches = Array.from(e.touches);
+
+  if (touches.length === 1 && _isPanning) {
+    const dx = touches[0].clientX - _panStartX;
+    const dy = touches[0].clientY - _panStartY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) _moved = true;
+    camX = _camStartX + dx;
+    camY = _camStartY + dy;
+    clampCamera();
+    drawMap();
+  } else if (touches.length === 2) {
+    _moved = true;
+    const dist = Math.hypot(
+      touches[0].clientX - touches[1].clientX,
+      touches[0].clientY - touches[1].clientY
+    );
+    if (_lastPinchDist > 0) {
+      const scale = dist / _lastPinchDist;
+      const oldZoom = camZoom;
+      camZoom = Math.max(CAM_MIN_ZOOM, Math.min(CAM_MAX_ZOOM, camZoom * scale));
+
+      // 以双指中心为缩放中心
+      const rect = canvas.getBoundingClientRect();
+      const cx = (touches[0].clientX + touches[1].clientX) / 2 - rect.left;
+      const cy = (touches[0].clientY + touches[1].clientY) / 2 - rect.top;
+      camX = cx - (cx - camX) * (camZoom / oldZoom);
+      camY = cy - (cy - camY) * (camZoom / oldZoom);
+
+      clampCamera();
+    }
+    _lastPinchDist = dist;
+    drawMap();
+  }
+}
+
+function onTouchEnd(e) {
+  e.preventDefault();
+  // 短按且没有移动 → 视为点击选城
+  if (!_moved && Date.now() - _tapStart < 300) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = _tapX - rect.left;
+    const my = _tapY - rect.top;
+    handleTapAt(mx, my);
+  }
+  _touches = Array.from(e.touches);
+  _lastPinchDist = 0;
+  _isPanning = false;
+}
+
+function handleTapAt(mx, my) {
+  if (!gameState) return;
+  let tapped = null;
   for (let i = 0; i < gameState.cities.length; i++) {
     const pos = cityPos(gameState.cities[i]);
     const dist = Math.hypot(mx - pos.x, my - pos.y);
-    if (dist < 30) return i;
+    if (dist < 25 * camZoom) { tapped = i; break; }
   }
-  return null;
-}
-
-function onMapTouch(e) {
-  e.preventDefault();
-  const touch = e.touches[0];
-  touchedCity = getTouchedCity(touch);
-  if (touchedCity !== null && gameState) {
-    hoveredCity = touchedCity;
-    const city = gameState.cities[touchedCity];
+  if (tapped !== null) {
+    hoveredCity = tapped;
+    const city = gameState.cities[tapped];
     const me = gameState.players[gameState.you];
-    if (!me) return;
-
-    // 显示城池信息 toast
     const owner = city.owner === 'neutral' ? '中立' : (gameState.players[city.owner]?.name || '?');
     showMobileToast(`${city.name} | ${city.troops}兵 | ${owner}`);
-
-    if (city.owner === gameState.you) {
-      document.getElementById('selFrom').value = touchedCity;
-    } else {
-      document.getElementById('selTo').value = touchedCity;
+    if (me) {
+      if (city.owner === gameState.you) {
+        document.getElementById('selFrom').value = tapped;
+      } else {
+        document.getElementById('selTo').value = tapped;
+      }
     }
     drawMap();
   }
 }
 
-function onMapTouchMove(e) {
-  e.preventDefault();
+// 限制相机不要拖出太远
+function clampCamera() {
+  const totalW = mapW * camZoom;
+  const totalH = mapH * camZoom;
+  const margin = 50;
+  camX = Math.max(-(totalW - margin), Math.min(mapW - margin, camX));
+  camY = Math.max(-(totalH - margin), Math.min(mapH - margin, camY));
+}
+
+// 重置相机
+function resetCamera() {
+  camZoom = 1;
+  camX = 0;
+  camY = 0;
+  drawMap();
+}
+
+function zoomIn() {
+  const oldZoom = camZoom;
+  camZoom = Math.min(CAM_MAX_ZOOM, camZoom * 1.3);
+  // 以画布中心为缩放中心
+  camX = mapW / 2 - (mapW / 2 - camX) * (camZoom / oldZoom);
+  camY = mapH / 2 - (mapH / 2 - camY) * (camZoom / oldZoom);
+  clampCamera();
+  drawMap();
+}
+
+function zoomOut() {
+  const oldZoom = camZoom;
+  camZoom = Math.max(CAM_MIN_ZOOM, camZoom / 1.3);
+  camX = mapW / 2 - (mapW / 2 - camX) * (camZoom / oldZoom);
+  camY = mapH / 2 - (mapH / 2 - camY) * (camZoom / oldZoom);
+  clampCamera();
+  drawMap();
 }
 
 // 移动端简易 toast 提示

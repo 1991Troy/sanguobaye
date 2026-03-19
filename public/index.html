@@ -53,6 +53,11 @@
       <div id="map-container" data-tab="map">
         <canvas id="gameMap"></canvas>
         <div id="city-tooltip"></div>
+        <div id="map-zoom-controls">
+          <button onclick="zoomIn()" aria-label="放大">＋</button>
+          <button onclick="resetCamera()" aria-label="重置">⟲</button>
+          <button onclick="zoomOut()" aria-label="缩小">－</button>
+        </div>
       </div>
       <div id="side-panel" data-tab="cmd">
         <h3 class="desktop-only">⚔️ 指挥部</h3>
