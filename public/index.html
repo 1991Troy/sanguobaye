@@ -42,14 +42,15 @@
       <div id="players-list"></div>
     </div>
 
-    <!-- 移动端标签切换栏 -->
-    <div id="mobile-tabs">
-      <button class="mobile-tab active" onclick="switchTab('map')" aria-label="地图">🗺️ 地图</button>
-      <button class="mobile-tab" onclick="switchTab('cmd')" aria-label="指挥">⚔️ 指挥</button>
-      <button class="mobile-tab" onclick="switchTab('log')" aria-label="战报">📜 战报</button>
-    </div>
+    <!-- 移动端标签切换栏 + 主区域容器 -->
+    <div id="game-body">
+      <div id="mobile-tabs">
+        <button class="mobile-tab active" onclick="switchTab('map')" aria-label="地图">🗺️ 地图</button>
+        <button class="mobile-tab" onclick="switchTab('cmd')" aria-label="指挥">⚔️ 指挥</button>
+        <button class="mobile-tab" onclick="switchTab('log')" aria-label="战报">📜 战报</button>
+      </div>
 
-    <div id="main-area">
+      <div id="main-area">
       <div id="map-container" data-tab="map">
         <canvas id="gameMap"></canvas>
         <div id="city-tooltip"></div>
@@ -119,6 +120,7 @@
         <div id="battle-log-mobile"></div>
       </div>
     </div>
+    </div><!-- /game-body -->
   </div>
 
   <script src="game.js"></script>

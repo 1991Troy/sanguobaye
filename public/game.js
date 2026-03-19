@@ -89,22 +89,27 @@ function joinGame() { goToLobby(); }
 function switchTab(tab) {
   const tabs = document.querySelectorAll('.mobile-tab');
   tabs.forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
+  // 找到对应按钮
+  tabs.forEach(t => {
+    if ((tab === 'map' && t.textContent.includes('地图')) ||
+        (tab === 'cmd' && t.textContent.includes('指挥')) ||
+        (tab === 'log' && t.textContent.includes('战报'))) {
+      t.classList.add('active');
+    }
+  });
 
   const mapEl = document.getElementById('map-container');
   const cmdEl = document.getElementById('side-panel');
   const logEl = document.getElementById('mobile-log-panel');
 
-  // 在移动端通过 display 控制可见性
-  if (window.innerWidth <= 768) {
+  if (window.innerWidth <= 768 || (window.innerHeight <= 500 && window.innerWidth > window.innerHeight)) {
     mapEl.style.display = tab === 'map' ? 'block' : 'none';
     cmdEl.style.display = tab === 'cmd' ? 'flex' : 'none';
     logEl.style.display = tab === 'log' ? 'block' : 'none';
   }
 
   if (tab === 'map') {
-    resizeCanvas();
-    drawMap();
+    setTimeout(() => { resizeCanvas(); drawMap(); }, 50);
   }
 }
 
@@ -337,13 +342,16 @@ function handleResponsiveLayout() {
   const mapEl = document.getElementById('map-container');
   const cmdEl = document.getElementById('side-panel');
   const logEl = document.getElementById('mobile-log-panel');
-  if (window.innerWidth > 768) {
+  const isMobile = window.innerWidth <= 768;
+  const isLandscape = window.innerHeight <= 500 && window.innerWidth > window.innerHeight;
+
+  if (!isMobile && !isLandscape) {
     // Desktop: show map and side panel, hide mobile log
     mapEl.style.display = '';
     cmdEl.style.display = '';
     logEl.style.display = 'none';
   } else {
-    // Mobile: check which tab is active
+    // Mobile or landscape: check which tab is active
     const activeTab = document.querySelector('.mobile-tab.active');
     const tab = activeTab ? activeTab.textContent.includes('地图') ? 'map' : activeTab.textContent.includes('指挥') ? 'cmd' : 'log' : 'map';
     mapEl.style.display = tab === 'map' ? 'block' : 'none';

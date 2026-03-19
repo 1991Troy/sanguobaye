@@ -88,6 +88,7 @@ body {
 
 /* ===== Game Screen ===== */
 #game-screen { display: none; height: 100vh; height: 100dvh; flex-direction: column; overflow: hidden; }
+#game-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
 
 /* ===== Top Bar ===== */
 #top-bar {
@@ -378,18 +379,95 @@ canvas#gameMap { width: 100%; height: 100%; display: block; }
 }
 
 /* ==========================================================
-   MOBILE LANDSCAPE: 横屏优化
+   MOBILE LANDSCAPE: 横屏 — 左右布局，标签变侧边栏
    ========================================================== */
-@media (max-width: 768px) and (orientation: landscape) {
-  #top-bar { min-height: 30px; padding: 2px 8px; }
-  #top-bar .info { font-size: 0.68em; gap: 5px; }
-  .mobile-tab { padding: 6px 0; font-size: 0.8em; }
-  #action-panel { padding: 8px 10px; }
-  #action-panel .section { margin-bottom: 6px; }
-  #action-panel select, #action-panel input[type=number] { padding: 6px 8px; min-height: 34px; font-size: 0.82em; }
-  .btn { padding: 7px 10px; min-height: 34px; font-size: 0.82em; }
-  #waiting-info { padding: 12px; }
-  #waiting-info .count { font-size: 1.6em; }
+@media (max-height: 500px) and (orientation: landscape) {
+  /* 横屏时顶栏极简化：单行，不换行 */
+  #top-bar {
+    height: 28px; min-height: 28px; padding: 0 8px;
+    flex-wrap: nowrap; overflow: hidden;
+  }
+  #top-bar .info { font-size: 0.65em; gap: 6px; flex-wrap: nowrap; }
+  #players-list { display: none; } /* 横屏隐藏玩家列表，省空间 */
+
+  /* game-body 横向排列：侧边标签 + 内容区 */
+  #game-body { flex-direction: row; }
+
+  /* 标签栏变成左侧竖排 */
+  #mobile-tabs {
+    display: flex; flex-direction: column; width: 44px; flex-shrink: 0;
+    border-bottom: none; border-right: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+  .mobile-tab {
+    padding: 10px 0; font-size: 0.72em; writing-mode: horizontal-tb;
+    border-bottom: none; border-right: 2px solid transparent;
+    border-left: none; color: var(--text-dim); background: transparent;
+    border-top: none; cursor: pointer; font-family: inherit;
+    touch-action: manipulation;
+  }
+  .mobile-tab.active { border-right-color: var(--accent); color: var(--accent); background: rgba(233,69,96,0.06); }
+
+  /* 主区域填满剩余空间 */
+  #main-area { flex: 1; min-height: 0; min-width: 0; position: relative; }
+
+  /* 隐藏桌面元素 */
+  .desktop-only { display: none !important; }
+
+  /* 面板绝对定位填满 */
+  #map-container { position: absolute; inset: 0; }
+  #side-panel {
+    position: absolute; inset: 0; width: 100%; border-left: none;
+    background: var(--bg-deep); overflow-y: auto; z-index: 2;
+    display: none;
+  }
+  #mobile-log-panel {
+    position: absolute; inset: 0; background: var(--bg-deep);
+    overflow-y: auto; z-index: 2; display: none;
+  }
+  #city-tooltip { display: none !important; }
+
+  /* 面板内容紧凑 */
+  #action-panel { padding: 6px 8px; }
+  #action-panel .section { margin-bottom: 4px; }
+  #action-panel label { font-size: 0.68em; margin-bottom: 1px; }
+  #action-panel select, #action-panel input[type=number] {
+    padding: 4px 6px; min-height: 28px; font-size: 0.78em;
+  }
+  .btn { padding: 5px 8px; min-height: 28px; font-size: 0.75em; }
+  .btn-draw { padding: 6px; font-size: 0.82em; }
+  .btn-start { padding: 6px; font-size: 0.85em; }
+
+  #waiting-info { padding: 8px; }
+  #waiting-info .count { font-size: 1.4em; }
+
+  /* 战报紧凑 */
+  #battle-log-mobile { font-size: 0.72em; line-height: 1.5; padding: 6px 8px; }
+
+  /* 缩放按钮小一点 */
+  #map-zoom-controls button { width: 32px; height: 32px; font-size: 16px; }
+  #map-zoom-controls { bottom: 6px; right: 6px; gap: 2px; }
+
+  /* 弹窗适配横屏 */
+  .draw-modal-content { padding: 12px; }
+  .draw-card { width: clamp(70px, 15vh, 110px); padding: 6px; }
+  .card-icon-big { font-size: 1.4em; }
+  .card-hero-img { width: 50px; height: 50px; }
+  .draw-header { font-size: 1.1em; margin-bottom: 10px; }
+  .save-modal-content { max-height: 85vh; }
+  .score-modal-content { padding: 12px; max-height: 90vh; }
+  .score-table { font-size: 0.68em; }
+  .score-table th, .score-table td { padding: 3px 4px; }
+
+  /* 登录和大厅横屏适配 */
+  #login-screen { padding: 10px; }
+  #login-screen h1 { font-size: 1.5em; }
+  #login-screen p { margin: 4px 0 12px; font-size: 0.82em; }
+  #login-screen input { padding: 8px 16px; }
+  #login-screen button { padding: 8px 30px; margin-top: 8px; }
+  #lobby-screen { padding: 10px; }
+  #lobby-screen h1 { font-size: 1.3em; }
+  .room-list { max-height: 30vh; }
 }
 
 /* ==========================================================
