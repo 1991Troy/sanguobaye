@@ -156,6 +156,8 @@ function handleMessage(msg) {
 
 function startGame() { ws.send(JSON.stringify({ type: 'start' })); }
 function endTurn() { ws.send(JSON.stringify({ type: 'endTurn' })); }
+function addBot(strategy) { ws.send(JSON.stringify({ type: 'addBot', strategy })); }
+function removeBot() { ws.send(JSON.stringify({ type: 'removeBot' })); }
 
 function doAttack() {
   const from = parseInt(document.getElementById('selFrom').value);
@@ -192,7 +194,7 @@ function updateUI() {
   pl.innerHTML = Object.entries(s.players).map(([id, p]) =>
     `<span class="player-tag" style="background:${p.color}33;border:1px solid ${p.color}">
       <span class="player-dot" style="background:${p.color}"></span>
-      ${p.name} (${p.cityCount}城)${id === s.you ? ' 👈' : ''}
+      ${p.isBot ? '🤖' : ''}${p.name} (${p.cityCount}城)${id === s.you ? ' 👈' : ''}
     </span>`
   ).join('');
 

@@ -78,6 +78,17 @@
             <br>
             <button class="btn btn-start" onclick="startGame()" aria-label="开始游戏">开始游戏 (至少2人)</button>
             <br><br>
+            <div class="bot-controls">
+              <label style="font-size:0.78em;color:#8b95b0">🤖 添加机器人</label>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
+                <button class="btn btn-bot" onclick="addBot('aggressive')" title="好战嗜杀，优先进攻">🔱 吕布型</button>
+                <button class="btn btn-bot" onclick="addBot('defensive')" title="稳扎稳打，先发展后进攻">📜 诸葛型</button>
+                <button class="btn btn-bot" onclick="addBot('balanced')" title="攻守兼备，伺机而动">👑 曹操型</button>
+                <button class="btn btn-bot" onclick="addBot('rush')" title="全力扩张，速战速决">⚔️ 张飞型</button>
+              </div>
+              <button class="btn btn-del" onclick="removeBot()" style="width:100%;margin-top:6px;font-size:0.72em">移除一个机器人</button>
+            </div>
+            <br>
             <button class="btn btn-save" onclick="openSaveModal()" aria-label="加载存档" style="width:100%">📂 加载存档</button>
             <br><br>
             <button class="btn btn-end" onclick="leaveRoom()" aria-label="离开房间" style="width:100%">🚪 离开房间</button>
@@ -188,6 +199,14 @@
           <p>桌面：滚轮缩放，点击城池选择出发/目标</p>
           <p>手机：双指缩放，单指拖动，点击选城</p>
           <p>右下角 ＋/⟲/－ 按钮可缩放和重置</p>
+        </div>
+        <div class="help-section">
+          <div class="help-title">🤖 智能机器人</div>
+          <p>等待阶段可添加AI机器人，共4种策略：</p>
+          <p>🔱 吕布型：好战嗜杀，优先进攻敌方城池</p>
+          <p>📜 诸葛型：稳扎稳打，先发展经济再进攻</p>
+          <p>👑 曹操型：攻守兼备，伺机而动</p>
+          <p>⚔️ 张飞型：全力扩张，速战速决</p>
         </div>
         <div class="help-section">
           <div class="help-title">🏆 胜利条件</div>

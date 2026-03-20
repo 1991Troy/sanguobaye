@@ -304,6 +304,7 @@ class GameRoom {
         broadcastRoom(this, { type: 'info', msg: `⏰ ${this.players[this.currentTurn]?.name || '?'} 回合超时，自动跳过` });
         this.nextTurn();
         sendStateRoom(this);
+        checkNextBotTurn(this);
       }
     }, this.TURN_TIME);
   }
@@ -564,6 +565,8 @@ class GameRoom {
           cities: p.cities,
           skillCards: id === forPlayer ? p.skillCards : undefined,
           hasDrawn: id === forPlayer ? p.hasDrawn : undefined,
+          isBot: p.isBot || false,
+          botStrategy: p.botStrategy || undefined,
         }])
       ),
       cities: this.cities,
@@ -690,6 +693,346 @@ function deleteSave(filename) {
   return false;
 }
 
+// ========== AI 机器人系统 ==========
+const BOT_STRATEGIES = {
+  aggressive: { name: '吕布型', desc: '好战嗜杀，优先进攻', icon: '🔱', attackWeight: 0.7, recruitWeight: 0.15, drawWeight: 0.15, minTroopsToAttack: 1500, preferWeakTargets: false },
+  defensive: { name: '诸葛型', desc: '稳扎稳打，先发展后进攻', icon: '📜', attackWeight: 0.3, recruitWeight: 0.45, drawWeight: 0.25, minTroopsToAttack: 4000, preferWeakTargets: true },
+  balanced: { name: '曹操型', desc: '攻守兼备，伺机而动', icon: '👑', attackWeight: 0.45, recruitWeight: 0.3, drawWeight: 0.25, minTroopsToAttack: 2500, preferWeakTargets: true },
+  rush: { name: '张飞型', desc: '全力扩张，速战速决', icon: '⚔️', attackWeight: 0.6, recruitWeight: 0.2, drawWeight: 0.2, minTroopsToAttack: 1000, preferWeakTargets: true },
+};
+
+const BOT_NAMES = ['司马AI', '周瑜AI', '庞统AI', '郭嘉AI', '荀彧AI', '贾诩AI', '陆逊AI', '法正AI'];
+let botNameIndex = 0;
+
+function createBot(room, strategy) {
+  if (Object.keys(room.players).length >= room.maxPlayers) return null;
+  if (room.state !== 'waiting') return null;
+  const strat = BOT_STRATEGIES[strategy] || BOT_STRATEGIES.balanced;
+  const name = BOT_NAMES[botNameIndex++ % BOT_NAMES.length];
+  const id = 'bot_' + Date.now() + Math.random().toString(36).substr(2, 4);
+  const color = room.colors[room.colorIndex++ % room.colors.length];
+  room.players[id] = { ws: null, name: `${strat.icon}${name}`, color, cities: [], generals: [], gold: 5000, skillCards: [], hasDrawn: false, isBot: true, botStrategy: strategy };
+  return id;
+}
+
+function executeBotTurn(room, botId) {
+  const bot = room.players[botId];
+  if (!bot || !bot.isBot || room.state !== 'playing') return;
+  const strat = BOT_STRATEGIES[bot.botStrategy] || BOT_STRATEGIES.balanced;
+
+  const actions = [];
+  const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+  async function runBotActions() {
+    await delay(800 + Math.random() * 1200);
+
+    // 1. 抽卡
+    if (!bot.hasDrawn && Math.random() < strat.drawWeight + 0.5) {
+      bot.hasDrawn = true;
+      const cards = drawCards(5);
+      const drawLog = [];
+      cards.forEach(card => {
+        if (card.type === 'general') {
+          card.cityId = bot.cities.length > 0 ? bot.cities[0] : -1;
+          bot.generals.push(card);
+          drawLog.push(`${card.rarity === 'gold' ? '🥇金卡' : card.rarity === 'purple' ? '🟣紫卡' : '🔵蓝卡'} ${card.icon} ${card.name}`);
+        } else if (card.type === 'skill') {
+          bot.skillCards.push(card);
+        } else if (card.type === 'gold') {
+          bot.gold += card.amount;
+        } else if (card.type === 'troops') {
+          if (bot.cities.length > 0) room.cities[bot.cities[0]].troops += card.amount;
+        }
+      });
+      if (drawLog.length > 0) broadcast(room, { type: 'info', msg: `🎴 ${bot.name} 抽到了 ${drawLog.join('、')}` });
+      sendState(room);
+      await delay(600 + Math.random() * 600);
+    }
+
+    // 2. 征兵（防御型多征兵）
+    const recruitRolls = bot.botStrategy === 'defensive' ? 3 : 2;
+    for (let i = 0; i < recruitRolls; i++) {
+      if (bot.gold >= 2000 && bot.cities.length > 0 && Math.random() < strat.recruitWeight + 0.3) {
+        // 选择兵力最少的城池征兵
+        const weakestCity = bot.cities.reduce((best, cid) => room.cities[cid].troops < room.cities[best].troops ? cid : best, bot.cities[0]);
+        const result = room.recruit(botId, weakestCity, 1000);
+        if (result.ok) {
+          broadcast(room, { type: 'info', msg: `🏰 ${bot.name} 在 ${room.cities[weakestCity].name} 征兵` });
+          sendState(room);
+          await delay(400 + Math.random() * 400);
+        }
+      }
+    }
+
+    // 3. 使用技能卡
+    if (bot.skillCards.length > 0) {
+      await botUseSkillCard(room, botId, strat);
+      await delay(400 + Math.random() * 400);
+    }
+
+    // 4. 进攻
+    if (Math.random() < strat.attackWeight + 0.2) {
+      await botAttack(room, botId, strat);
+    }
+
+    // 5. 结束回合
+    await delay(500 + Math.random() * 500);
+    if (room.state === 'playing' && room.currentTurn === botId) {
+      room.nextTurn();
+      sendState(room);
+      // 如果下一个也是机器人，继续执行
+      checkNextBotTurn(room);
+    }
+  }
+
+  runBotActions().catch(() => {
+    // 出错时安全结束回合
+    if (room.state === 'playing' && room.currentTurn === botId) {
+      room.nextTurn();
+      sendState(room);
+      checkNextBotTurn(room);
+    }
+  });
+}
+
+function botAttack(room, botId, strat) {
+  const bot = room.players[botId];
+  if (!bot || bot.cities.length === 0) return;
+
+  // 找到可攻击的目标
+  const candidates = [];
+  for (const fromCid of bot.cities) {
+    const fromCity = room.cities[fromCid];
+    if (fromCity.troops < strat.minTroopsToAttack + 500) continue;
+
+    // 找相邻的非己方城池
+    for (const route of ROUTES) {
+      let neighbor = -1;
+      if (route[0] === fromCid) neighbor = route[1];
+      else if (route[1] === fromCid) neighbor = route[0];
+      if (neighbor < 0) continue;
+
+      const targetCity = room.cities[neighbor];
+      if (targetCity.owner === botId) continue;
+
+      // 检查空城计
+      const defOwner = room.players[targetCity.owner];
+      if (defOwner && defOwner._emptyCity) continue;
+
+      const advantage = fromCity.troops - targetCity.troops;
+      const ratio = fromCity.troops / Math.max(targetCity.troops, 1);
+
+      candidates.push({ fromCid, toCid: neighbor, advantage, ratio, isNeutral: targetCity.owner === 'neutral', defTroops: targetCity.troops });
+    }
+  }
+
+  if (candidates.length === 0) return;
+
+  // 排序策略
+  if (strat.preferWeakTargets) {
+    candidates.sort((a, b) => {
+      if (a.isNeutral !== b.isNeutral) return a.isNeutral ? -1 : 1;
+      return b.ratio - a.ratio;
+    });
+  } else {
+    // 激进型：优先攻击玩家城池
+    candidates.sort((a, b) => {
+      if (a.isNeutral !== b.isNeutral) return a.isNeutral ? 1 : -1;
+      return b.advantage - a.advantage;
+    });
+  }
+
+  const target = candidates[0];
+  if (target.ratio < 1.2 && !strat.preferWeakTargets) return; // 兵力不够优势就不打
+  if (target.ratio < 0.8) return; // 太弱不打
+
+  const fromCity = room.cities[target.fromCid];
+  const troops = Math.min(fromCity.troops - 500, Math.max(Math.floor(fromCity.troops * 0.6), strat.minTroopsToAttack));
+  if (troops <= 0) return;
+
+  // 选择最强武将
+  let bestGeneral = '';
+  let bestAtk = 0;
+  bot.generals.forEach(g => {
+    if (g.attack > bestAtk) { bestAtk = g.attack; bestGeneral = g.name; }
+  });
+
+  const result = room.attack(botId, target.fromCid, target.toCid, troops, bestGeneral, false);
+  if (result.ok) {
+    broadcast(room, { type: 'battleLog', log: result.log });
+    const winner = room.checkElimination();
+    if (winner) broadcast(room, { type: 'gameOver', winner: room.players[winner]?.name });
+    sendState(room);
+  }
+}
+
+function botUseSkillCard(room, botId, strat) {
+  const bot = room.players[botId];
+  if (!bot || bot.skillCards.length === 0) return;
+
+  const skill = bot.skillCards[0]; // 使用第一张技能卡
+  let skillLog = [];
+  let skillOk = false;
+
+  switch (skill.id) {
+    case 'skill_runan': {
+      if (room.cities[7].owner === botId) {
+        room.cities[7].troops += 2000;
+        skillLog.push(`👑 ${bot.name} 使用【汝南王】，汝南增兵2000！`);
+        skillOk = true;
+      }
+      break;
+    }
+    case 'skill_fortify': {
+      if (bot.cities.length > 0) {
+        // 加固兵力最多的城池
+        const bestCity = bot.cities.reduce((best, cid) => room.cities[cid].troops > room.cities[best].troops ? cid : best, bot.cities[0]);
+        room.cities[bestCity].defBuff = (room.cities[bestCity].defBuff || 0) + 0.3;
+        skillLog.push(`🏰 ${bot.name} 使用【固若金汤】，${room.cities[bestCity].name} 防御+30%！`);
+        skillOk = true;
+      }
+      break;
+    }
+    case 'skill_fire': {
+      const enemyCities = room.cities.filter(c => c.owner !== botId && c.owner !== 'neutral');
+      if (enemyCities.length > 0) {
+        const target = enemyCities.reduce((best, c) => c.troops > best.troops ? c : best, enemyCities[0]);
+        const burned = Math.floor(target.troops * 0.3);
+        target.troops -= burned;
+        skillLog.push(`🔥 ${bot.name} 使用【火烧连营】，${target.name} 烧毁 ${burned} 兵！`);
+        skillOk = true;
+      }
+      break;
+    }
+    case 'skill_empty': {
+      bot._emptyCity = true;
+      skillLog.push(`🏚️ ${bot.name} 使用【空城计】，本回合免疫攻击！`);
+      skillOk = true;
+      break;
+    }
+    case 'skill_wind': {
+      bot._windActive = true;
+      skillLog.push(`🌬️ ${bot.name} 使用【借东风】，本回合攻击力翻倍！`);
+      skillOk = true;
+      break;
+    }
+    case 'skill_supply': {
+      const bonus = bot.cities.length * 1000;
+      bot.gold += bonus;
+      skillLog.push(`🌾 ${bot.name} 使用【粮草先行】，额外获得 ${bonus} 金币！`);
+      skillOk = true;
+      break;
+    }
+    case 'skill_beauty': {
+      const enemyCities = room.cities.filter(c => c.owner !== botId && c.owner !== 'neutral');
+      if (enemyCities.length > 0) {
+        const target = enemyCities.reduce((best, c) => c.troops > best.troops ? c : best, enemyCities[0]);
+        const half = Math.floor(target.troops / 2);
+        target.troops -= half;
+        skillLog.push(`💃 ${bot.name} 使用【美人计】，${target.name} 兵力减半！`);
+        skillOk = true;
+      }
+      break;
+    }
+    case 'skill_trap': {
+      if (bot.cities.length > 0) {
+        // 在边境城池设伏
+        const borderCity = bot.cities.find(cid => {
+          return ROUTES.some(r => {
+            const neighbor = r[0] === cid ? r[1] : r[1] === cid ? r[0] : -1;
+            return neighbor >= 0 && room.cities[neighbor].owner !== botId;
+          });
+        }) || bot.cities[0];
+        room.cities[borderCity].trapped = true;
+        skillLog.push(`⚡ ${bot.name} 使用【十面埋伏】，在 ${room.cities[borderCity].name} 设伏！`);
+        skillOk = true;
+      }
+      break;
+    }
+    case 'skill_borrow': {
+      const enemyCities = room.cities.filter(c => c.owner !== botId && c.owner !== 'neutral' && c.troops > 500);
+      if (enemyCities.length > 0 && bot.cities.length > 0) {
+        const target = enemyCities[Math.floor(Math.random() * enemyCities.length)];
+        const amt = Math.min(2000, target.troops - 100);
+        if (amt > 0) {
+          target.troops -= amt;
+          room.cities[bot.cities[0]].troops += amt;
+          skillLog.push(`🏹 ${bot.name} 使用【草船借箭】，从 ${target.name} 偷取 ${amt} 兵！`);
+          skillOk = true;
+        }
+      }
+      break;
+    }
+    case 'skill_chain': {
+      const enemyCities = room.cities.filter(c => c.owner !== botId && c.owner !== 'neutral');
+      if (enemyCities.length > 0) {
+        const target = enemyCities.reduce((best, c) => c.troops > best.troops ? c : best, enemyCities[0]);
+        target.locked = true;
+        skillLog.push(`🔗 ${bot.name} 使用【连环计】，${target.name} 被锁定！`);
+        skillOk = true;
+      }
+      break;
+    }
+    default: {
+      // 其他技能卡直接使用通用效果
+      if (skill.id === 'skill_ambush') {
+        bot._ambushActive = true;
+        skillLog.push(`🎭 ${bot.name} 使用【声东击西】！`);
+        skillOk = true;
+      } else if (skill.id === 'skill_counter') {
+        for (const [pid2, p2] of Object.entries(room.players)) {
+          if (pid2 !== botId) { delete p2._chargeActive; delete p2._windActive; delete p2._ambushActive; delete p2._emptyCity; }
+        }
+        skillLog.push(`🪞 ${bot.name} 使用【反间计】！`);
+        skillOk = true;
+      } else if (skill.id === 'skill_revive') {
+        const revived = JSON.parse(JSON.stringify(PURPLE_GENERALS[Math.floor(Math.random() * PURPLE_GENERALS.length)]));
+        revived.hp = 100; revived.cityId = bot.cities.length > 0 ? bot.cities[0] : -1;
+        bot.generals.push(revived);
+        skillLog.push(`🪔 ${bot.name} 使用【七星续命】，召回 ${revived.name}！`);
+        skillOk = true;
+      } else if (skill.id === 'skill_defect') {
+        const enemies = Object.entries(room.players).filter(([id, p]) => id !== botId && p.generals.length > 0);
+        if (enemies.length > 0) {
+          const [eid, ep] = enemies[Math.floor(Math.random() * enemies.length)];
+          const stolen = ep.generals.splice(Math.floor(Math.random() * ep.generals.length), 1)[0];
+          stolen.cityId = bot.cities.length > 0 ? bot.cities[0] : -1;
+          bot.generals.push(stolen);
+          skillLog.push(`🗣️ ${bot.name} 使用【离间计】，策反了 ${stolen.name}！`);
+          skillOk = true;
+        }
+      } else if (skill.id === 'skill_transfer') {
+        if (bot.cities.length >= 2) {
+          const sorted = [...bot.cities].sort((a, b) => room.cities[b].troops - room.cities[a].troops);
+          const from = sorted[0], to = sorted[sorted.length - 1];
+          const amt = Math.min(Math.floor(room.cities[from].troops * 0.3), room.cities[from].troops - 500);
+          if (amt > 0) {
+            room.cities[from].troops -= amt;
+            room.cities[to].troops += amt;
+            skillLog.push(`📦 ${bot.name} 使用【调兵遣将】，调 ${amt} 兵至 ${room.cities[to].name}`);
+            skillOk = true;
+          }
+        }
+      }
+      break;
+    }
+  }
+
+  if (skillOk) {
+    bot.skillCards.shift();
+    broadcast(room, { type: 'battleLog', log: skillLog });
+    sendState(room);
+  }
+}
+
+function checkNextBotTurn(room) {
+  if (room.state !== 'playing') return;
+  const currentPlayer = room.players[room.currentTurn];
+  if (currentPlayer && currentPlayer.isBot) {
+    setTimeout(() => executeBotTurn(room, room.currentTurn), 1000 + Math.random() * 500);
+  }
+}
+
 // ========== WebSocket 服务 ==========
 const rooms = {};
 let defaultRoom = null;
@@ -795,11 +1138,36 @@ wss.on('connection', (ws) => {
         sendState(room); broadcastRoomList();
         break;
       }
+      case 'addBot': {
+        if (!room || room.state !== 'waiting') { ws.send(JSON.stringify({ type: 'error', msg: '只能在等待阶段添加机器人' })); return; }
+        const botStrategy = msg.strategy || 'balanced';
+        const botPid = createBot(room, botStrategy);
+        if (!botPid) { ws.send(JSON.stringify({ type: 'error', msg: '房间已满' })); return; }
+        const botP = room.players[botPid];
+        broadcast(room, { type: 'playerJoined', name: botP.name, count: Object.keys(room.players).length });
+        sendState(room);
+        broadcastRoomList();
+        break;
+      }
+      case 'removeBot': {
+        if (!room || room.state !== 'waiting') return;
+        const botToRemove = Object.entries(room.players).find(([id, p]) => p.isBot);
+        if (botToRemove) {
+          const [bid, bp] = botToRemove;
+          room.removePlayer(bid);
+          broadcast(room, { type: 'playerLeft', name: bp.name, count: Object.keys(room.players).length });
+          sendState(room);
+          broadcastRoomList();
+        }
+        break;
+      }
       case 'start': {
         if (!room) return;
         if (room.startGame()) {
           broadcast(room, { type: 'gameStarted' });
           sendState(room);
+          // 如果第一个回合是机器人，自动执行
+          checkNextBotTurn(room);
         } else {
           ws.send(JSON.stringify({ type: 'error', msg: '至少需要2名玩家' }));
         }
@@ -814,6 +1182,7 @@ wss.on('connection', (ws) => {
           if (winner) broadcast(room, { type: 'gameOver', winner: room.players[winner]?.name });
           room.nextTurn();
           sendState(room);
+          checkNextBotTurn(room);
         } else {
           ws.send(JSON.stringify({ type: 'error', msg: result.msg }));
         }
@@ -830,6 +1199,7 @@ wss.on('connection', (ws) => {
         if (!room || room.state !== 'playing' || playerId !== room.currentTurn) return;
         room.nextTurn();
         sendState(room);
+        checkNextBotTurn(room);
         break;
       }
 
