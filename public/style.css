@@ -453,6 +453,56 @@ canvas#gameMap { width: 100%; height: 100%; display: block; }
 
 /* ===== Mobile ===== */
 @media (max-width: 768px) {
+  /* --- Login 登录页竖屏适配 --- */
+  #login-screen {
+    background-size: cover;
+    background-position: center center;
+    padding: 16px;
+  }
+  #login-splash h1 {
+    font-size: clamp(1.8em, 10vw, 3em);
+    letter-spacing: 6px;
+  }
+  .splash-hint {
+    font-size: clamp(0.8em, 3vw, 1em);
+    letter-spacing: 2px;
+  }
+  #login-screen h1 {
+    font-size: clamp(1.5em, 9vw, 2.8em);
+    letter-spacing: 5px;
+  }
+  #login-screen p {
+    font-size: clamp(0.75em, 2.8vw, 0.95em);
+    margin: 6px 0 20px;
+  }
+  #login-screen input {
+    width: min(280px, 85vw);
+    padding: 12px 20px;
+    font-size: 0.95em;
+  }
+  #login-screen button {
+    padding: 12px 40px;
+    font-size: 0.95em;
+  }
+  .login-deco { font-size: 2em; }
+  #login-screen::before {
+    width: 300px; height: 300px;
+  }
+
+  /* --- Lobby 大厅竖屏适配 --- */
+  #lobby-screen {
+    padding: 16px 12px;
+  }
+  #lobby-screen h1 {
+    font-size: clamp(1.2em, 6vw, 1.8em);
+    letter-spacing: 3px;
+  }
+  .room-list { max-height: 35vh; }
+  .room-card { padding: 10px 12px; }
+  .room-code { font-size: 0.95em; }
+  .room-info { font-size: 0.75em; }
+
+  /* --- Game 游戏界面 --- */
   #top-bar { height: 34px; padding: 0 6px; }
   #top-bar .info { font-size: 0.7em; gap: 6px; }
   #players-list { display: none; }
@@ -484,10 +534,90 @@ canvas#gameMap { width: 100%; height: 100%; display: block; }
   .skill-card-name { font-size: 0.68em; }
 
   #chat-box { width: 240px; bottom: 40px; right: 6px; }
+
+  /* --- Modals 弹窗适配 --- */
+  .draw-card { width: clamp(65px, 17vw, 100px); padding: clamp(6px, 1.2vw, 10px); }
+  .draw-header { font-size: clamp(1em, 5vw, 1.6em); letter-spacing: 3px; margin-bottom: 14px; }
+  .help-modal-content, .save-modal-content { width: min(480px, 95vw); }
+  .score-modal-content { width: min(480px, 95vw); }
+}
+
+/* ===== Portrait phones (竖屏手机专用) ===== */
+@media (max-width: 480px) and (orientation: portrait) {
+  #login-screen {
+    justify-content: flex-end;
+    padding-bottom: 15vh;
+  }
+  #login-splash {
+    position: absolute;
+    top: 18vh;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  #login-screen.show-form #login-splash {
+    opacity: 0; pointer-events: none;
+  }
+  #login-screen.show-form {
+    justify-content: center;
+    padding-bottom: 0;
+  }
+  #login-form {
+    width: 90vw;
+  }
+  #login-screen input {
+    width: 85vw;
+  }
+  #login-screen button {
+    width: 85vw;
+    padding: 14px 0;
+  }
+
+  /* Lobby */
+  #lobby-screen {
+    justify-content: flex-start;
+    padding-top: 10vh;
+  }
+  #lobby-screen input {
+    width: 140px;
+  }
+
+  /* Game: 竖屏时侧边栏在底部 */
+  #main-area {
+    flex-direction: column;
+  }
+  #map-container {
+    flex: 1;
+    min-height: 45vh;
+  }
+  #side-panel {
+    width: 100%; max-width: 100%; min-width: 100%;
+    max-height: 45vh;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+  #side-panel h3 { padding: 4px 10px; font-size: 0.7em; }
+  #action-panel { padding: 6px 10px; }
 }
 
 /* Landscape phones */
 @media (max-height: 450px) and (orientation: landscape) {
+  /* Login */
+  #login-screen { padding: 10px; }
+  #login-splash h1 { font-size: clamp(1.4em, 5vh, 2em); }
+  .splash-hint { font-size: 0.8em; margin-top: 8px; }
+  #login-screen h1 { font-size: clamp(1.2em, 5vh, 1.8em); }
+  #login-screen p { margin: 4px 0 12px; }
+  #login-screen input { padding: 8px 16px; font-size: 0.85em; }
+  #login-screen button { padding: 8px 32px; font-size: 0.85em; margin-top: 8px; }
+  .login-deco { font-size: 1.5em; margin-bottom: 4px; }
+  #login-screen::before { width: 200px; height: 200px; }
+
+  /* Lobby */
+  #lobby-screen { padding: 10px; }
+  #lobby-screen h1 { font-size: clamp(1em, 4vh, 1.5em); }
+  .room-list { max-height: 30vh; }
+
+  /* Game */
   #top-bar { height: 28px; }
   #top-bar .info { font-size: 0.64em; }
   #side-panel { width: 205px; }
@@ -506,6 +636,10 @@ canvas#gameMap { width: 100%; height: 100%; display: block; }
 @media (max-width: 380px) {
   #side-panel { width: 44%; min-width: 135px; }
   #login-screen input { width: 90vw; }
+  #login-screen button { width: 90vw; }
+  #login-splash h1 { font-size: clamp(1.5em, 12vw, 2.2em); letter-spacing: 4px; }
+  .splash-hint { font-size: 0.75em; }
+  .draw-card { width: clamp(55px, 18vw, 80px); }
 }
 
 /* ===== 金卡全屏展示 — Gold Splash Screen ===== */
@@ -634,4 +768,12 @@ canvas#gameMap { width: 100%; height: 100%; display: block; }
     height: clamp(160px, 55vw, 280px);
   }
   .gold-splash-name { letter-spacing: 4px; }
+}
+@media (max-width: 480px) and (orientation: portrait) {
+  .gold-splash-img {
+    width: clamp(140px, 60vw, 240px);
+    height: clamp(140px, 60vw, 240px);
+  }
+  .gold-splash-name { font-size: clamp(1.4em, 8vw, 2.2em); letter-spacing: 3px; }
+  .gold-splash-stats { font-size: clamp(0.75em, 3vw, 0.95em); }
 }
