@@ -5,6 +5,37 @@ let hoveredCity = null;
 let playerName = '';
 let currentRoomId = null;
 
+// ========== 背景音乐 ==========
+const bgm = new Audio('/assets/music.mp3');
+bgm.loop = true;
+bgm.volume = 0.35;
+let bgmPlaying = false;
+
+function toggleBGM() {
+  const btn = document.getElementById('bgm-btn');
+  if (bgmPlaying) {
+    bgm.pause();
+    bgmPlaying = false;
+    btn.textContent = '🔇';
+  } else {
+    bgm.play().catch(() => {});
+    bgmPlaying = true;
+    btn.textContent = '🔊';
+  }
+}
+
+// 首次用户交互时自动播放
+function tryAutoPlayBGM() {
+  if (bgmPlaying) return;
+  bgm.play().then(() => {
+    bgmPlaying = true;
+    const btn = document.getElementById('bgm-btn');
+    if (btn) btn.textContent = '🔊';
+  }).catch(() => {});
+  document.removeEventListener('click', tryAutoPlayBGM);
+}
+document.addEventListener('click', tryAutoPlayBGM);
+
 function connectWS() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${protocol}//${location.host}`);

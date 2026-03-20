@@ -27,7 +27,7 @@ const server = http.createServer((req, res) => {
     filePath = path.join(__dirname, 'public', decodedUrl === '/' ? 'index.html' : decodedUrl);
   }
   const ext = path.extname(filePath);
-  const mimeTypes = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.jpg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif' };
+  const mimeTypes = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.jpg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.mp3': 'audio/mpeg' };
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end('Not Found'); return; }
     res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
