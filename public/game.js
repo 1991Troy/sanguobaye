@@ -16,6 +16,13 @@ function connectWS() {
   return new Promise(resolve => { ws.onopen = resolve; });
 }
 
+// 点击屏幕 → 显示登录表单
+function showLoginForm() {
+  const screen = document.getElementById('login-screen');
+  if (screen.classList.contains('show-form')) return;
+  screen.classList.add('show-form');
+}
+
 function goToLobby() {
   playerName = document.getElementById('playerName').value.trim() || '无名氏';
   document.getElementById('lobby-player-name').textContent = `👤 ${playerName}`;
@@ -122,18 +129,13 @@ function endTurn() { ws.send(JSON.stringify({ type: 'endTurn' })); }
 function doAttack() {
   const from = parseInt(document.getElementById('selFrom').value);
   const to = parseInt(document.getElementById('selTo').value);
-  const troops = parseInt(document.getElementById('troopCount').value);
+  const troopVal = document.getElementById('troopCount').value;
   const general = document.getElementById('selGeneral').value;
-  ws.send(JSON.stringify({ type: 'attack', from, to, troops, general }));
-}
-
-// 全军出击（带武将）
-function doAllOut() {
-  const from = parseInt(document.getElementById('selFrom').value);
-  const to = parseInt(document.getElementById('selTo').value);
-  const general = document.getElementById('selGeneral').value;
-  if (!confirm(`确定全军出击？将派出城池全部兵力（保留500兵）${general ? '，武将: ' + general : ''}`)) return;
-  ws.send(JSON.stringify({ type: 'attack', from, to, troops: 0, general, allOut: true }));
+  if (troopVal === 'allout') {
+    ws.send(JSON.stringify({ type: 'attack', from, to, troops: 0, general, allOut: true }));
+  } else {
+    ws.send(JSON.stringify({ type: 'attack', from, to, troops: parseInt(troopVal), general }));
+  }
 }
 
 function doRecruit() {
@@ -768,8 +770,11 @@ function showGoldSplash(card, callback) {
     }, i * 400);
   }
 
-  // 点击或3秒后关闭
+  // 点击或3.5秒后关闭（只触发一次）
+  let closed = false;
   const close = () => {
+    if (closed) return;
+    closed = true;
     splash.classList.remove('gold-splash-enter');
     splash.classList.add('gold-splash-exit');
     setTimeout(() => {
@@ -1076,7 +1081,9 @@ function openHelp() {
   fetch('/api/readme')
     .then(r => r.json())
     .then(data => {
-      body.innerHTML = renderMarkdown(data.content);
+      // 过滤掉"本地运行"和"技术栈"等非游戏内容
+      const filtered = data.content.replace(/## 本地运行[\s\S]*$/m, '').trim();
+      body.innerHTML = renderMarkdown(filtered);
     })
     .catch(() => {
       body.innerHTML = '<p style="color:#e74c3c;text-align:center;padding:20px">加载失败</p>';

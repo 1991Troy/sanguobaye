@@ -28,21 +28,59 @@ body {
   height: 100vh; height: 100dvh; overflow: hidden;
 }
 
-/* ===== Login — 原神风格：天空渐变 + 光晕 + 浮动粒子感 ===== */
+/* ===== Login — 全屏背景原画 + 暗色蒙版 ===== */
+/* ===== Login — 全屏原画 + 点击进入 + 蒙版登录 ===== */
 #login-screen {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   height: 100dvh; padding: 20px;
-  background:
-    radial-gradient(ellipse at 50% 20%, rgba(94,184,212,0.18) 0%, transparent 55%),
-    radial-gradient(ellipse at 30% 70%, rgba(235,181,99,0.12) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 50%, rgba(192,132,252,0.08) 0%, transparent 50%),
-    linear-gradient(175deg, #1a2040 0%, #0f1628 40%, #162038 100%);
+  position: relative; overflow: hidden; cursor: pointer;
+  background: url('/assets/主页.jpg') center center / cover no-repeat;
 }
+/* 蒙版（点击后出现） */
+#login-screen::after {
+  content: ''; position: absolute; inset: 0;
+  background: rgba(10,14,28,0.65);
+  pointer-events: none; z-index: 0;
+  opacity: 0; transition: opacity 0.6s ease;
+}
+#login-screen.show-form::after { opacity: 1; }
+#login-screen.show-form { cursor: default; }
+
+/* 第一阶段：全屏原画 + 点击提示 */
+#login-splash {
+  position: relative; z-index: 2; text-align: center;
+  transition: opacity 0.4s ease;
+}
+#login-splash h1 {
+  font-size: clamp(2.2em, 8vw, 4.5em); color: #fff;
+  letter-spacing: 10px; font-weight: 700;
+  text-shadow: 0 0 40px rgba(235,181,99,0.5), 0 4px 16px rgba(0,0,0,0.8);
+}
+.splash-hint {
+  color: rgba(255,255,255,0.7); font-size: clamp(0.9em, 2.5vw, 1.2em);
+  letter-spacing: 4px; margin-top: 16px;
+  animation: hintPulse 2s ease-in-out infinite;
+}
+@keyframes hintPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+#login-screen.show-form #login-splash { opacity: 0; pointer-events: none; position: absolute; }
+
+/* 第二阶段：登录表单 */
+#login-form {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; align-items: center;
+  transition: opacity 0.5s ease 0.3s, transform 0.5s ease 0.3s;
+}
+#login-form.login-form-hidden { opacity: 0; pointer-events: none; transform: translateY(20px); position: absolute; }
+#login-screen.show-form #login-form { opacity: 1; pointer-events: auto; transform: translateY(0); position: relative; }
+
 #login-screen::before {
   content: ''; position: absolute; top: 10%; left: 50%; transform: translateX(-50%);
   width: 500px; height: 500px; border-radius: 50%;
   background: radial-gradient(circle, rgba(94,184,212,0.06) 0%, transparent 70%);
-  pointer-events: none; animation: floatGlow 8s ease-in-out infinite;
+  pointer-events: none; animation: floatGlow 8s ease-in-out infinite; z-index: 1;
 }
 @keyframes floatGlow {
   0%, 100% { transform: translateX(-50%) translateY(0); }

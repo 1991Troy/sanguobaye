@@ -7,13 +7,21 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="login-screen">
-    <div class="login-deco">✦</div>
-    <h1>三国霸业</h1>
-    <p class="login-sub">— 群雄逐鹿 · 多人联机策略 —</p>
-    <input type="text" id="playerName" placeholder="请输入你的名号…" maxlength="8" aria-label="玩家名称">
-    <br>
-    <button onclick="goToLobby()" aria-label="进入大厅">踏入天下</button>
+  <div id="login-screen" onclick="showLoginForm()">
+    <!-- 点击提示（第一阶段） -->
+    <div id="login-splash">
+      <h1>三国霸业</h1>
+      <p class="splash-hint">— 点击屏幕继续 —</p>
+    </div>
+    <!-- 登录表单（第二阶段，点击后显示） -->
+    <div id="login-form" class="login-form-hidden">
+      <div class="login-deco">✦</div>
+      <h1>三国霸业</h1>
+      <p class="login-sub">— 群雄逐鹿 · 多人联机策略 —</p>
+      <input type="text" id="playerName" placeholder="请输入你的名号…" maxlength="8" aria-label="玩家名称" onclick="event.stopPropagation()">
+      <br>
+      <button onclick="event.stopPropagation(); goToLobby()" aria-label="进入大厅">踏入天下</button>
+    </div>
   </div>
 
   <div id="lobby-screen" style="display:none">
@@ -88,14 +96,23 @@
             </div>
             <div class="section">
               <label>出兵</label>
-              <input type="number" id="troopCount" value="3000" min="500" step="500" aria-label="出兵数量">
+              <select id="troopCount" aria-label="出兵数量">
+                <option value="allout">🔥 全军出击（留500兵）</option>
+                <option value="500">500</option>
+                <option value="1000">1000</option>
+                <option value="1500">1500</option>
+                <option value="2000">2000</option>
+                <option value="2500">2500</option>
+                <option value="3000" selected>3000</option>
+                <option value="4000">4000</option>
+                <option value="5000">5000</option>
+                <option value="8000">8000</option>
+                <option value="10000">10000</option>
+              </select>
             </div>
             <div class="section btn-row">
               <button class="btn btn-attack" onclick="doAttack()" aria-label="出征">⚔️ 出征</button>
               <button class="btn btn-recruit" onclick="doRecruit()" aria-label="征兵">🏰 征兵</button>
-            </div>
-            <div class="section">
-              <button class="btn btn-allout" onclick="doAllOut()" aria-label="全军出击">🔥 全军出击（留500兵）</button>
             </div>
             <div class="section">
               <button class="btn btn-draw" onclick="doDraw()" id="btnDraw" aria-label="五连抽卡">🎴 五连抽卡</button>

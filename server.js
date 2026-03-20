@@ -52,34 +52,34 @@ const GENERALS = [
 ];
 
 // ========== 抽卡系统 ==========
-// 金卡武将 - 高属性（新增诸葛亮、孙权、曹操、刘备）
+// 金卡武将（总属性 240-260，按历史定位分配）
 const GOLD_GENERALS = [
-  { name: '吕布', attack: 100, defense: 70, strategy: 30, icon: '🔱', rarity: 'gold', image: '/assets/吕布.jpg' },
-  { name: '关羽', attack: 95, defense: 80, strategy: 70, icon: '🗡️', rarity: 'gold', image: '/assets/关羽.jpg' },
-  { name: '马超', attack: 93, defense: 72, strategy: 45, icon: '🐴', rarity: 'gold', image: '/assets/马超.jpg' },
-  { name: '张飞', attack: 90, defense: 75, strategy: 40, icon: '⚔️', rarity: 'gold', image: '/assets/张飞.jpg' },
-  { name: '诸葛亮', attack: 55, defense: 65, strategy: 100, icon: '📜', rarity: 'gold', image: '/assets/诸葛亮.jpg' },
-  { name: '孙权', attack: 70, defense: 78, strategy: 88, icon: '🐯', rarity: 'gold', image: '/assets/孙权.jpg' },
-  { name: '曹操', attack: 78, defense: 80, strategy: 95, icon: '👑', rarity: 'gold', image: '/assets/曹操.jpg' },
-  { name: '刘备', attack: 65, defense: 75, strategy: 85, icon: '👒', rarity: 'gold', image: '/assets/刘备.jpg' },
+  { name: '吕布', attack: 100, defense: 78, strategy: 25, icon: '🔱', rarity: 'gold', image: '/assets/吕布.jpg' },     // 天下第一猛将，攻满，谋略极低
+  { name: '关羽', attack: 95, defense: 85, strategy: 62, icon: '🗡️', rarity: 'gold', image: '/assets/关羽.jpg' },     // 武圣，攻防俱佳，有一定谋略
+  { name: '马超', attack: 92, defense: 70, strategy: 35, icon: '🐴', rarity: 'gold', image: '/assets/马超.jpg' },      // 锦马超，高攻低谋
+  { name: '张飞', attack: 88, defense: 82, strategy: 30, icon: '⚔️', rarity: 'gold', image: '/assets/张飞.jpg' },     // 万人敌，攻防强但粗犷
+  { name: '诸葛亮', attack: 40, defense: 55, strategy: 100, icon: '📜', rarity: 'gold', image: '/assets/诸葛亮.jpg' }, // 卧龙，谋略满，攻击最低
+  { name: '曹操', attack: 72, defense: 80, strategy: 95, icon: '👑', rarity: 'gold', image: '/assets/曹操.jpg' },      // 乱世奸雄，均衡偏谋略
+  { name: '孙权', attack: 60, defense: 88, strategy: 82, icon: '🐯', rarity: 'gold', image: '/assets/孙权.jpg' },     // 守江东，防御突出
+  { name: '刘备', attack: 55, defense: 72, strategy: 90, icon: '👒', rarity: 'gold', image: '/assets/刘备.jpg' },      // 仁德之主，谋略型领袖
 ];
-// 紫卡武将 - 中等属性（去掉已在金卡的曹操、诸葛亮）
+// 紫卡武将（总属性 200-220）
 const PURPLE_GENERALS = [
-  { name: '赵云', attack: 82, defense: 75, strategy: 65, icon: '🛡️', rarity: 'purple' },
-  { name: '周瑜', attack: 68, defense: 65, strategy: 96, icon: '🔥', rarity: 'purple' },
-  { name: '典韦', attack: 84, defense: 82, strategy: 25, icon: '🪓', rarity: 'purple' },
-  { name: '司马懿', attack: 55, defense: 70, strategy: 98, icon: '🦊', rarity: 'purple' },
-  { name: '甘宁', attack: 78, defense: 68, strategy: 50, icon: '⚓', rarity: 'purple' },
-  { name: '太史慈', attack: 80, defense: 70, strategy: 48, icon: '🎯', rarity: 'purple' },
+  { name: '赵云', attack: 85, defense: 80, strategy: 55, icon: '🛡️', rarity: 'purple' },  // 常胜将军，攻防均衡
+  { name: '周瑜', attack: 58, defense: 55, strategy: 92, icon: '🔥', rarity: 'purple' },   // 火攻大师，纯谋略型
+  { name: '典韦', attack: 90, defense: 78, strategy: 20, icon: '🪓', rarity: 'purple' },   // 古之恶来，纯武力
+  { name: '司马懿', attack: 45, defense: 65, strategy: 95, icon: '🦊', rarity: 'purple' }, // 冢虎，极致谋略
+  { name: '甘宁', attack: 82, defense: 62, strategy: 42, icon: '⚓', rarity: 'purple' },   // 锦帆贼，攻击型
+  { name: '太史慈', attack: 80, defense: 68, strategy: 45, icon: '🎯', rarity: 'purple' }, // 神射手，攻击偏高
 ];
-// 蓝卡武将 - 基础属性（去掉已在金卡的诸葛亮）
+// 蓝卡武将（总属性 160-180）
 const BLUE_GENERALS = [
-  { name: '黄忠', attack: 67, defense: 58, strategy: 55, icon: '🏹', rarity: 'blue' },
-  { name: '孙策', attack: 68, defense: 58, strategy: 50, icon: '⛵', rarity: 'blue' },
-  { name: '张辽', attack: 65, defense: 60, strategy: 50, icon: '🐎', rarity: 'blue' },
-  { name: '徐晃', attack: 63, defense: 62, strategy: 45, icon: '🪓', rarity: 'blue' },
-  { name: '魏延', attack: 70, defense: 55, strategy: 52, icon: '🗡️', rarity: 'blue' },
-  { name: '黄盖', attack: 60, defense: 65, strategy: 48, icon: '🔥', rarity: 'blue' },
+  { name: '黄忠', attack: 75, defense: 50, strategy: 40, icon: '🏹', rarity: 'blue' },  // 老当益壮，攻高防低
+  { name: '孙策', attack: 72, defense: 55, strategy: 42, icon: '⛵', rarity: 'blue' },   // 小霸王，攻击型
+  { name: '张辽', attack: 70, defense: 62, strategy: 48, icon: '🐎', rarity: 'blue' },   // 威震逍遥津，较均衡
+  { name: '徐晃', attack: 65, defense: 68, strategy: 40, icon: '🪓', rarity: 'blue' },   // 周亚夫之风，偏防御
+  { name: '魏延', attack: 78, defense: 48, strategy: 38, icon: '🗡️', rarity: 'blue' },  // 脑后反骨，高攻低防
+  { name: '黄盖', attack: 55, defense: 70, strategy: 50, icon: '🔥', rarity: 'blue' },   // 苦肉计，偏防御谋略
 ];
 
 // 技能卡 - 一次性使用（长驱直入 → 子午谷奇谋）
@@ -111,8 +111,8 @@ function drawCards(count) {
 
   for (let i = 0; i < count; i++) {
     const roll = Math.random();
-    if (roll < 0.10) {
-      // 金卡武将 10%
+    if (roll < 0.08) {
+      // 金卡武将 8%
       const available = GOLD_GENERALS.filter(g => !drawnGenerals.has(g.name));
       if (available.length > 0) {
         const g = available[Math.floor(Math.random() * available.length)];
@@ -411,8 +411,10 @@ class GameRoom {
     // 武将加成（攻击+谋略影响）
     let atkBonus = 1, defBonus = 1;
     let atkStrategyBonus = 0, defStrategyBonus = 0;
-    const atkGeneral = p.generals.find(g => g.name === generalName && g.cityId === fromCity);
+    const atkGeneral = p.generals.find(g => g.name === generalName);
     if (atkGeneral) {
+      // 武将不在出发城池也允许出战，但自动调往出发城池
+      atkGeneral.cityId = fromCity;
       atkBonus = 1 + atkGeneral.attack / 200;
       atkStrategyBonus = atkGeneral.strategy / 400; // 谋略减少己方兵损
     }
