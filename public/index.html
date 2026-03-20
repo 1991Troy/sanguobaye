@@ -8,11 +8,12 @@
 </head>
 <body>
   <div id="login-screen">
-    <h1>🏯 三国霸业</h1>
-    <p>多人联机回合制策略游戏</p>
-    <input type="text" id="playerName" placeholder="输入你的名号" maxlength="8" aria-label="玩家名称">
+    <div class="login-deco">✦</div>
+    <h1>三国霸业</h1>
+    <p class="login-sub">— 群雄逐鹿 · 多人联机策略 —</p>
+    <input type="text" id="playerName" placeholder="请输入你的名号…" maxlength="8" aria-label="玩家名称">
     <br>
-    <button onclick="goToLobby()" aria-label="进入大厅">进入天下</button>
+    <button onclick="goToLobby()" aria-label="进入大厅">踏入天下</button>
   </div>
 
   <div id="lobby-screen" style="display:none">
@@ -40,6 +41,10 @@
         <span id="gameCountdown" class="countdown-game"></span>
       </div>
       <div id="players-list"></div>
+      <div class="top-actions">
+        <button class="top-btn" onclick="toggleChat()" aria-label="聊天">💬</button>
+        <button class="top-btn" onclick="openHelp()" aria-label="帮助">❓</button>
+      </div>
     </div>
 
     <div id="main-area">
@@ -90,6 +95,9 @@
               <button class="btn btn-recruit" onclick="doRecruit()" aria-label="征兵">🏰 征兵</button>
             </div>
             <div class="section">
+              <button class="btn btn-allout" onclick="doAllOut()" aria-label="全军出击">🔥 全军出击（留500兵）</button>
+            </div>
+            <div class="section">
               <button class="btn btn-draw" onclick="doDraw()" id="btnDraw" aria-label="五连抽卡">🎴 五连抽卡</button>
             </div>
             <div class="section" id="skillCardSection" style="display:none">
@@ -103,7 +111,70 @@
               <button class="btn btn-save" onclick="saveGame()" aria-label="存档">💾 存档</button>
               <button class="btn btn-save" onclick="openSaveModal()" aria-label="存档管理">📂 管理</button>
             </div>
+            <div class="section">
+              <button class="btn btn-help" onclick="openHelp()" aria-label="操作说明">❓ 操作说明</button>
+            </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 聊天框 -->
+  <div id="chat-box" style="display:none">
+    <div class="chat-header">
+      <span>💬 聊天</span>
+      <button onclick="toggleChat()" class="btn-close" aria-label="关闭聊天">✕</button>
+    </div>
+    <div id="chat-messages"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" placeholder="说点什么..." maxlength="200" aria-label="聊天输入" onkeydown="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()" class="btn btn-attack" style="padding:6px 10px;font-size:0.78em" aria-label="发送">发送</button>
+    </div>
+  </div>
+
+  <!-- 帮助弹窗 -->
+  <div id="help-modal" style="display:none">
+    <div class="help-modal-content">
+      <div class="save-modal-header">
+        <h3>❓ 操作指南</h3>
+        <button onclick="closeHelp()" class="btn-close" aria-label="关闭帮助">✕</button>
+      </div>
+      <div class="help-body">
+        <div class="help-section">
+          <div class="help-title">🎮 基本操作</div>
+          <p>1. 输入名号 → 进入大厅 → 创建/加入房间</p>
+          <p>2. 至少2人即可开始游戏，最多4人</p>
+          <p>3. 每回合60秒，全局30分钟</p>
+        </div>
+        <div class="help-section">
+          <div class="help-title">⚔️ 战斗</div>
+          <p>选择出发城池 → 目标城池 → 派遣武将(可选) → 设置兵力 → 出征</p>
+          <p>只能攻击有路线连接的城池（技能卡除外）</p>
+          <p>出征后城池至少保留500兵力</p>
+        </div>
+        <div class="help-section">
+          <div class="help-title">🏰 征兵</div>
+          <p>选择城池后点击征兵，每1000兵花费2000金</p>
+          <p>每回合每座城池自动恢复500兵</p>
+          <p>每座城池每回合产出1000金</p>
+        </div>
+        <div class="help-section">
+          <div class="help-title">🎴 抽卡</div>
+          <p>每回合可五连抽一次，可能获得：</p>
+          <p>🥇 金卡武将(5%) · 🟣 紫卡武将(15%) · 🔵 蓝卡武将(15%)</p>
+          <p>📜 技能卡(10%) · 💰 金币(25%) · ⚔️ 将士(30%)</p>
+        </div>
+        <div class="help-section">
+          <div class="help-title">🗺️ 地图操作</div>
+          <p>桌面：滚轮缩放，点击城池选择出发/目标</p>
+          <p>手机：双指缩放，单指拖动，点击选城</p>
+          <p>右下角 ＋/⟲/－ 按钮可缩放和重置</p>
+        </div>
+        <div class="help-section">
+          <div class="help-title">🏆 胜利条件</div>
+          <p>占领所有城池即可获胜</p>
+          <p>30分钟后按得分结算：城池数(70%) + 兵力(30%)</p>
         </div>
       </div>
     </div>
