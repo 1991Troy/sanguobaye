@@ -159,16 +159,142 @@ function endTurn() { ws.send(JSON.stringify({ type: 'endTurn' })); }
 function addBot(strategy) { ws.send(JSON.stringify({ type: 'addBot', strategy })); }
 function removeBot() { ws.send(JSON.stringify({ type: 'removeBot' })); }
 
-function doAttack() {
-  const from = parseInt(document.getElementById('selFrom').value);
-  const to = parseInt(document.getElementById('selTo').value);
-  const troopVal = document.getElementById('troopCount').value;
-  const general = document.getElementById('selGeneral').value;
+function predictBattle(from, to, troops, generalName, isAllOut) {
+  const s = gameState;
+  if (!s) return null;
+  const me = s.players[s.you];
+  const srcCity = s.cities[from];
+  const dstCity = s.cities[to];
+  if (!srcCity || !dstCity) return null;
+
+  const actualTroops = isAllOut ? Math.max(srcCity.troops - 500, 0) : troops;
+  if (actualTroops <= 0) return null;
+
+  // 攻方武将加成
+  let atkBonus = 1, atkStrategy = 0;
+  const atkGen = me.generals.find(g => g.name === generalName);
+  if (atkGen) {
+    atkBonus = 1 + atkGen.attack / 200;
+    atkStrategy = atkGen.strategy / 400;
+  }
+
+  // 防方武将加成
+  let defBonus = 1, defStrategy = 0;
+  let defGenName = null;
+  const cityGens = s.cityGenerals[to];
+  if (cityGens && cityGens.length > 0) {
+    const defGen = cityGens.find(g => g.owner === dstCity.owner);
+    if (defGen) {
+      defGenName = defGen.name;
+      // 从对方玩家数据中找完整属性
+      const defPlayer = s.players[dstCity.owner];
+      if (defPlayer) {
+        const fullGen = defPlayer.generals.find(g => g.name === defGen.name);
+        if (fullGen) {
+          defBonus = 1 + (fullGen.defense || 60) / 200;
+          defStrategy = (fullGen.strategy || 50) / 400;
+        }
+      }
+    }
+  }
+
+  // 防御buff
+  if (dstCity.defBuff && dstCity.defBuff > 0) defBonus *= (1 + dstCity.defBuff);
+
+  // 模拟：波动范围 ±10%
+  function simulate(atkRoll, defRoll) {
+    const atkPower = Math.floor(actualTroops * atkBonus * atkRoll);
+    const defPower = Math.floor(dstCity.troops * defBonus * defRoll);
+    if (atkPower > defPower) {
+      // 攻方胜：剩余兵力 = 差值还原为实际兵力，谋略减少兵损
+      const ratio = (atkPower - defPower) / atkPower; // 剩余战力占比
+      const remaining = Math.floor(actualTroops * ratio * (0.7 + atkStrategy));
+      return { win: true, remaining: Math.max(remaining, 100), atkLoss: actualTroops - Math.max(remaining, 100), defLoss: dstCity.troops };
+    } else {
+      const ratio = (defPower - atkPower) / defPower;
+      const remaining = Math.floor(dstCity.troops * ratio * (0.7 + defStrategy));
+      return { win: false, remaining: Math.max(remaining, 100), atkLoss: actualTroops, defLoss: dstCity.troops - Math.max(remaining, 100) };
+    }
+  }
+
+  const best = simulate(1.1, 0.9);
+  const avg = simulate(1.0, 1.0);
+  const worst = simulate(0.9, 1.1);
+
+  // 粗略胜率估算：蒙特卡洛模拟
+  let wins = 0, runs = 200;
+  for (let i = 0; i < runs; i++) {
+    const ar = 0.9 + Math.random() * 0.2;
+    const dr = 0.9 + Math.random() * 0.2;
+    if (simulate(ar, dr).win) wins++;
+  }
+
+  return {
+    troops: actualTroops,
+    srcName: srcCity.name,
+    dstName: dstCity.name,
+    dstTroops: dstCity.troops,
+    atkGeneral: atkGen ? `${atkGen.icon} ${atkGen.name}` : '无',
+    defGeneral: defGenName || '无',
+    winRate: Math.round(wins / runs * 100),
+    best, avg, worst,
+    defBuff: dstCity.defBuff || 0,
+  };
+}
+
+function showBattlePredict(from, to, troopVal, general) {
+  const isAllOut = troopVal === 'allout';
+  const troops = isAllOut ? 0 : parseInt(troopVal);
+  const pred = predictBattle(from, to, troops, general, isAllOut);
+  if (!pred) { confirmAttack(from, to, troopVal, general); return; }
+
+  const winColor = pred.winRate >= 60 ? '#2ecc71' : pred.winRate >= 40 ? '#f39c12' : '#e74c3c';
+  const modal = document.getElementById('predict-modal');
+  const body = document.getElementById('predict-body');
+  body.innerHTML = `
+    <div style="text-align:center;margin-bottom:12px">
+      <span style="font-size:2em;color:${winColor}">${pred.winRate}%</span>
+      <div style="color:#8b95b0;font-size:0.85em">预估胜率</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:0.9em">
+      <div><span style="color:#e74c3c">⚔️ 攻方</span><br>${pred.srcName}<br>${pred.troops} 兵<br>武将: ${pred.atkGeneral}</div>
+      <div style="align-self:center;font-size:1.5em">→</div>
+      <div style="text-align:right"><span style="color:#3498db">🛡️ 守方</span><br>${pred.dstName}<br>${pred.dstTroops} 兵<br>武将: ${pred.defGeneral}${pred.defBuff > 0 ? '<br>🏰 防御+' + Math.round(pred.defBuff * 100) + '%' : ''}</div>
+    </div>
+    <table style="width:100%;font-size:0.82em;border-collapse:collapse;margin-top:8px">
+      <tr style="color:#8b95b0"><td></td><td>结果</td><td>攻方损失</td><td>守方损失</td></tr>
+      <tr style="color:#2ecc71"><td>🟢 最佳</td><td>${pred.best.win ? '胜 剩' + pred.best.remaining + '兵' : '败'}</td><td>${pred.best.atkLoss}</td><td>${pred.best.defLoss}</td></tr>
+      <tr style="color:#f39c12"><td>🟡 平均</td><td>${pred.avg.win ? '胜 剩' + pred.avg.remaining + '兵' : '败'}</td><td>${pred.avg.atkLoss}</td><td>${pred.avg.defLoss}</td></tr>
+      <tr style="color:#e74c3c"><td>🔴 最差</td><td>${pred.worst.win ? '胜 剩' + pred.worst.remaining + '兵' : '败'}</td><td>${pred.worst.atkLoss}</td><td>${pred.worst.defLoss}</td></tr>
+    </table>
+    <div style="color:#8b95b0;font-size:0.75em;margin-top:8px;text-align:center">* 预估仅供参考，实际战斗有随机浮动</div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-attack" style="flex:1" onclick="confirmAttack(${from},${to},'${troopVal}','${general.replace(/'/g, "\\'")}')">⚔️ 确认出征</button>
+      <button class="btn btn-end" style="flex:1" onclick="closePredictModal()">取消</button>
+    </div>
+  `;
+  modal.style.display = 'flex';
+}
+
+function confirmAttack(from, to, troopVal, general) {
+  closePredictModal();
   if (troopVal === 'allout') {
     ws.send(JSON.stringify({ type: 'attack', from, to, troops: 0, general, allOut: true }));
   } else {
     ws.send(JSON.stringify({ type: 'attack', from, to, troops: parseInt(troopVal), general }));
   }
+}
+
+function closePredictModal() {
+  document.getElementById('predict-modal').style.display = 'none';
+}
+
+function doAttack() {
+  const from = parseInt(document.getElementById('selFrom').value);
+  const to = parseInt(document.getElementById('selTo').value);
+  const troopVal = document.getElementById('troopCount').value;
+  const general = document.getElementById('selGeneral').value;
+  showBattlePredict(from, to, troopVal, general);
 }
 
 function doRecruit() {
